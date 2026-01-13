@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   Play, Pause, Zap, Moon, Coffee, Volume2, Wind, SkipForward,
-  Radio, Activity, Sun, Monitor, Timer, X, Maximize
+  Radio, Activity, Sun, Monitor, Timer, X
 } from "lucide-react";
 
 // --- 配置数据 ---
@@ -12,8 +12,8 @@ const SCENES = [
     id: "focus",
     title: "DEEP FOCUS",
     subtitle: "High Beta Waves",
+    freq: "14-30 Hz", // 新增装饰数据
     icon: <Zap size={24} />,
-    // 定义两种模式的颜色：[亮色模式, 暗色模式]
     color: "text-blue-600 dark:text-cyan-400",
     bgGradient: "from-blue-100 to-indigo-100 dark:from-cyan-900/40 dark:to-blue-900/40",
     accent: "bg-blue-500 dark:bg-cyan-400",
@@ -26,6 +26,7 @@ const SCENES = [
     id: "relax",
     title: "RELAXATION",
     subtitle: "Alpha Waves",
+    freq: "8-14 Hz",
     icon: <Wind size={24} />,
     color: "text-teal-600 dark:text-emerald-400",
     bgGradient: "from-teal-100 to-emerald-100 dark:from-emerald-900/40 dark:to-teal-900/40",
@@ -39,6 +40,7 @@ const SCENES = [
     id: "sleep",
     title: "SLEEP MOD",
     subtitle: "Delta Waves",
+    freq: "0.5-4 Hz",
     icon: <Moon size={24} />,
     color: "text-indigo-600 dark:text-violet-400",
     bgGradient: "from-indigo-100 to-purple-100 dark:from-violet-900/40 dark:to-indigo-900/40",
@@ -52,6 +54,7 @@ const SCENES = [
     id: "creative",
     title: "CREATIVE",
     subtitle: "Theta Waves",
+    freq: "4-8 Hz",
     icon: <Coffee size={24} />,
     color: "text-orange-600 dark:text-amber-400",
     bgGradient: "from-orange-100 to-amber-100 dark:from-amber-900/40 dark:to-orange-900/40",
@@ -64,15 +67,14 @@ const SCENES = [
 ];
 
 export default function ZenFlowApp() {
-  // --- 全局状态 ---
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark'); // 主题
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [activeScene, setActiveScene] = useState<typeof SCENES[0] | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
   const [currentSongUrl, setCurrentSongUrl] = useState<string>("");
-  const [isScreensaver, setIsScreensaver] = useState(false); // 屏保模式
+  const [isScreensaver, setIsScreensaver] = useState(false);
 
-  // --- 番茄钟状态 ---
+  // 番茄钟
   const [timerMode, setTimerMode] = useState<'work' | 'break'>('work');
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -115,7 +117,6 @@ export default function ZenFlowApp() {
       interval = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
     } else if (timeLeft === 0) {
       setIsTimerRunning(false);
-      // 可以在这里加一个简单的提示音，暂时略过
     }
     return () => clearInterval(interval);
   }, [isTimerRunning, timeLeft]);
@@ -140,7 +141,6 @@ export default function ZenFlowApp() {
     return () => clearInterval(timer);
   }, []);
 
-  // --- 交互处理 ---
   const handleSceneSelect = (scene: typeof SCENES[0]) => {
     setActiveScene(scene);
     playRandomTrack(scene);
@@ -150,50 +150,46 @@ export default function ZenFlowApp() {
     setIsPlaying(false);
     setActiveScene(null);
     setCurrentSongUrl("");
+    setIsTimerRunning(false);
   };
 
   return (
     <div className={`${theme} transition-colors duration-700`}>
-      {/* 背景容器：根据 dark/light 模式切换颜色 */}
-      <div className={`relative min-h-screen font-sans overflow-hidden transition-colors duration-700
-        ${theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-gray-100 text-slate-800'}
+      <div className={`relative min-h-screen font-sans transition-colors duration-700
+        ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-gray-50 text-slate-800'}
       `}>
 
-        <audio ref={audioRef} key={currentSongUrl} src={currentSongUrl} onEnded={() => activeScene && playRandomTrack(activeScene)} loop={false} />
+        <audio ref={audioRef} key={currentSongUrl} src={currentSongUrl} onEnded={() => activeScene && playRandomTrack(activeScene)} />
 
-        {/* --- 装饰性背景 (网格 + 光晕) --- */}
+        {/* --- 背景装饰 --- */}
         <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-          {/* 网格 - 亮色模式下淡一点，暗色模式下明显一点 */}
           <div className={`absolute inset-0 bg-[size:40px_40px]
             ${theme === 'dark'
               ? 'bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)]'
               : 'bg-[linear-gradient(to_right,#00000008_1px,transparent_1px),linear-gradient(to_bottom,#00000008_1px,transparent_1px)]'}
           `}></div>
-
-          {/* 顶部环境光 - 根据场景变化 */}
           <div className={`absolute top-[-20%] left-1/2 -translate-x-1/2 w-[80vw] h-[60vh] rounded-full blur-[100px] opacity-30 transition-all duration-1000
              ${activeScene ? activeScene.bgGradient : (theme === 'dark' ? 'bg-blue-900/20' : 'bg-blue-200/40')}
           `}></div>
         </div>
 
-        {/* --- 顶部栏 --- */}
-        <header className="fixed top-0 left-0 w-full p-6 flex justify-between items-center z-40">
-          <div className="flex items-center gap-3 cursor-pointer group" onClick={handleBack}>
-             {/* Logo */}
-            <div className={`relative w-8 h-8 flex items-center justify-center border rounded-md transition-all
+        {/* --- Header (Mobile Optimized) --- */}
+        <header className="fixed top-0 left-0 w-full px-4 py-4 md:p-6 flex justify-between items-center z-40 bg-gradient-to-b from-black/5 to-transparent">
+          <div className="flex items-center gap-2 md:gap-3 cursor-pointer group" onClick={handleBack}>
+            <div className={`relative w-7 h-7 md:w-8 md:h-8 flex items-center justify-center border rounded-md transition-all
               ${theme === 'dark' ? 'border-white/20' : 'border-black/10'}
             `}>
               <div className={`w-2 h-2 rounded-sm ${isPlaying ? 'animate-ping' : ''} ${theme === 'dark' ? 'bg-white' : 'bg-slate-800'}`}></div>
             </div>
-            <span className="font-mono font-bold tracking-[0.2em] text-sm opacity-80">
+            <span className="font-mono font-bold tracking-[0.2em] text-xs md:text-sm opacity-80">
               ZENFLOW
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
-             {/* 只有在播放时显示音量 */}
+          <div className="flex items-center gap-2 md:gap-4">
+            {/* 音量条 - 移动端隐藏，节省空间 */}
             {activeScene && (
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-md transition-colors
+              <div className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-md transition-colors
                 ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white/60 border-black/5'}
               `}>
                 <Volume2 size={16} className="opacity-50" />
@@ -205,105 +201,115 @@ export default function ZenFlowApp() {
               </div>
             )}
 
-            {/* 主题切换按钮 */}
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className={`p-2 rounded-full border transition-all hover:scale-105
-                ${theme === 'dark' ? 'bg-white/10 border-white/10 hover:bg-white/20' : 'bg-white border-black/5 hover:bg-gray-200 shadow-sm'}
+              className={`p-2 rounded-full border transition-all active:scale-95
+                ${theme === 'dark' ? 'bg-white/10 border-white/10' : 'bg-white border-black/5 shadow-sm'}
               `}
-              title="Toggle Theme"
             >
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-
-            {/* 屏保开关 */}
              <button
               onClick={() => setIsScreensaver(true)}
-              className={`p-2 rounded-full border transition-all hover:scale-105
-                ${theme === 'dark' ? 'bg-white/10 border-white/10 hover:bg-white/20' : 'bg-white border-black/5 hover:bg-gray-200 shadow-sm'}
+              className={`p-2 rounded-full border transition-all active:scale-95
+                ${theme === 'dark' ? 'bg-white/10 border-white/10' : 'bg-white border-black/5 shadow-sm'}
               `}
-              title="Screensaver Mode"
             >
               <Monitor size={18} />
             </button>
           </div>
         </header>
 
-        {/* --- 屏保覆盖层 (Screensaver) --- */}
+        {/* --- Screensaver --- */}
         {isScreensaver && (
            <div
-             className="fixed inset-0 z-50 flex flex-col items-center justify-center cursor-none bg-black text-white animate-fade-in"
+             className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black text-white animate-fade-in touch-none"
              onClick={() => setIsScreensaver(false)}
-             onMouseMove={() => {/* 可以在这里做逻辑，比如动鼠标显示退出提示 */}}
            >
              <div className="absolute inset-0 bg-black/40 z-0"></div>
-             {/* 屏保背景流光 */}
              <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] rounded-full blur-[150px] opacity-20 animate-pulse-slow
                ${activeScene ? activeScene.accent.replace('bg-', 'bg-') : 'bg-blue-500'}
              `}></div>
 
              <div className="z-10 text-center space-y-4 select-none">
-               <h1 className="text-[15vw] leading-none font-bold font-mono tracking-tighter opacity-90">
+               <h1 className="text-[18vw] md:text-[15vw] leading-none font-bold font-mono tracking-tighter opacity-90">
                  {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                </h1>
-               <p className="text-xl md:text-3xl font-light opacity-50 tracking-[0.5em] uppercase">
+               <p className="text-sm md:text-3xl font-light opacity-50 tracking-[0.5em] uppercase">
                  {activeScene ? activeScene.title : "SYSTEM IDLE"}
                </p>
-               <p className="text-sm opacity-30 mt-12 animate-pulse">Click anywhere to wake up</p>
+               <p className="text-xs opacity-30 mt-12 animate-pulse">Tap to wake up</p>
              </div>
            </div>
         )}
 
-        {/* --- 主内容区 --- */}
-        <main className="relative container mx-auto px-6 h-screen flex flex-col justify-center items-center z-10">
+        {/* --- Main Content --- */}
+        {/* Mobile Fix: Changed h-screen to min-h-screen + padding for scrollability */}
+        <main className="relative container mx-auto px-4 pt-24 pb-12 md:px-6 md:h-screen flex flex-col justify-center items-center z-10">
 
-          {/* 1. 首页：场景选择 */}
+          {/* 1. Scene Selector */}
           {!activeScene && (
-            <div className="w-full max-w-5xl animate-fade-in-up">
-              <div className="text-center mb-16 space-y-4">
-                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-mono tracking-widest uppercase mb-4
+            <div className="w-full max-w-6xl animate-fade-in-up">
+              <div className="text-center mb-10 md:mb-16 space-y-3">
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-mono tracking-widest uppercase
                   ${theme === 'dark' ? 'border-white/10 bg-white/5 text-white/50' : 'border-black/10 bg-black/5 text-slate-500'}
                 `}>
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
                   Ready to Focus
                 </div>
-                <h1 className="text-5xl md:text-7xl font-bold tracking-tighter opacity-90">
+                {/* Mobile Fix: Font size adjusted */}
+                <h1 className="text-4xl md:text-7xl font-bold tracking-tighter opacity-90">
                   SELECT MODE
                 </h1>
-                <p className="font-mono text-sm opacity-50 tracking-wide uppercase">
-                  Customize your auditory environment
-                </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              {/* Grid Layout */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
                 {SCENES.map((scene) => (
                   <button
                     key={scene.id}
                     onClick={() => handleSceneSelect(scene)}
-                    className={`group relative h-64 rounded-2xl overflow-hidden border transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl
+                    className={`group relative h-48 md:h-80 rounded-2xl overflow-hidden border transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl
                       ${theme === 'dark'
                         ? 'bg-[#0f172a] border-white/10 hover:border-white/30'
                         : 'bg-white border-black/5 hover:border-black/20 shadow-sm'}
                     `}
                   >
-                    {/* 悬停时的背景染色 */}
                     <div className={`absolute inset-0 bg-gradient-to-br ${scene.bgGradient} opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
 
-                    <div className="absolute inset-0 flex flex-col justify-between p-6 z-10">
+                    {/* --- Visual Upgrade: 大背景水印 --- */}
+                    <div className={`absolute -bottom-8 -right-8 opacity-5 group-hover:opacity-10 transition-opacity duration-500 transform rotate-12 scale-150 ${scene.color}`}>
+                      {scene.icon}
+                      <div className="scale-[5]">{scene.icon}</div>
+                    </div>
+
+                    {/* --- Visual Upgrade: 中间声波图 (SVG) --- */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-20 group-hover:opacity-40 transition-opacity">
+                      <svg className={`w-full h-12 ${scene.color} fill-current`} viewBox="0 0 100 20" preserveAspectRatio="none">
+                         <path d="M0,10 Q10,20 20,10 T40,10 T60,10 T80,10 T100,10 V20 H0 Z" className="animate-pulse" />
+                         <path d="M0,10 Q10,0 20,10 T40,10 T60,10 T80,10 T100,10 V0 H0 Z" className="animate-pulse" style={{animationDelay: '0.5s'}}/>
+                      </svg>
+                    </div>
+
+                    <div className="absolute inset-0 flex flex-col justify-between p-5 md:p-6 z-10">
                       <div className="flex justify-between items-start">
-                        <div className={`p-3 rounded-xl border transition-colors
+                        <div className={`p-2 md:p-3 rounded-xl border transition-colors
                           ${theme === 'dark' ? 'bg-white/5 border-white/5 text-white/80' : 'bg-white border-black/5 text-slate-600'}
                           group-hover:bg-white/20 group-hover:text-white
                         `}>
                           {scene.icon}
                         </div>
+                        {/* --- Visual Upgrade: 右上角装饰数据 --- */}
+                        <div className="text-[10px] font-mono opacity-40 font-bold tracking-wider">
+                           {scene.freq}
+                        </div>
                       </div>
 
                       <div className="space-y-1 text-left">
-                        <p className={`font-mono text-[10px] uppercase tracking-widest opacity-60 group-hover:text-white ${scene.color} dark:text-opacity-100`}>
+                        <p className={`font-mono text-[9px] md:text-[10px] uppercase tracking-widest opacity-60 group-hover:text-white ${scene.color} dark:text-opacity-100`}>
                           {scene.subtitle}
                         </p>
-                        <h3 className="text-xl font-bold tracking-tight group-hover:text-white transition-colors">
+                        <h3 className="text-lg md:text-xl font-bold tracking-tight group-hover:text-white transition-colors">
                           {scene.title}
                         </h3>
                       </div>
@@ -314,34 +320,33 @@ export default function ZenFlowApp() {
             </div>
           )}
 
-          {/* 2. 播放器 + 番茄钟界面 */}
+          {/* 2. Player Interface */}
           {activeScene && (
-            <div className="flex flex-col lg:flex-row items-center justify-center gap-12 w-full max-w-5xl animate-fade-in relative">
+            // Mobile Fix: flex-col for stacking on mobile, lg:flex-row for desktop
+            <div className="flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-24 w-full max-w-6xl animate-fade-in relative pb-10">
 
-              {/* 左侧：播放控制核心 */}
-              <div className="flex flex-col items-center justify-center flex-1">
-                <div className="relative mb-12">
-                   {/* 旋转轨道 */}
+              {/* Left: Player Core */}
+              <div className="flex flex-col items-center justify-center flex-1 order-1">
+                <div className="relative mb-8 md:mb-12 scale-90 md:scale-100">
                   <div className={`absolute inset-[-40px] rounded-full border border-dashed opacity-20 ${isPlaying ? 'animate-spin-slow' : ''} ${theme === 'dark' ? 'border-white' : 'border-black'}`}></div>
                   <div className={`absolute inset-0 rounded-full blur-[60px] opacity-20 transition-all duration-1000 ${activeScene.accent} ${isPlaying ? 'scale-125 opacity-40' : 'scale-100'}`}></div>
 
                   <button
                     onClick={() => setIsPlaying(!isPlaying)}
-                    className={`relative w-48 h-48 rounded-full border backdrop-blur-xl flex items-center justify-center shadow-2xl transition-transform active:scale-95 group z-10
+                    className={`relative w-40 h-40 md:w-56 md:h-56 rounded-full border backdrop-blur-xl flex items-center justify-center shadow-2xl transition-transform active:scale-95 group z-10
                       ${theme === 'dark' ? 'bg-slate-900/80 border-white/10' : 'bg-white/80 border-white/50'}
                     `}
                   >
                     {isPlaying ? (
-                      <Pause size={56} className={`fill-current ${activeScene.color} opacity-90`} />
+                      <Pause size={48} className={`fill-current ${activeScene.color} opacity-90`} />
                     ) : (
-                      <Play size={56} className={`ml-2 fill-current ${activeScene.color} opacity-90`} />
+                      <Play size={48} className={`ml-2 fill-current ${activeScene.color} opacity-90`} />
                     )}
                   </button>
 
-                  {/* 切歌按钮 */}
                   <button
                     onClick={(e) => { e.stopPropagation(); playRandomTrack(activeScene); }}
-                    className={`absolute -right-8 top-1/2 -translate-y-1/2 p-3 rounded-full border shadow-lg hover:scale-110 transition-all z-20
+                    className={`absolute -right-4 md:-right-8 top-1/2 -translate-y-1/2 p-3 rounded-full border shadow-lg hover:scale-110 transition-all z-20
                        ${theme === 'dark' ? 'bg-slate-800 border-white/10 text-white/50 hover:text-white' : 'bg-white border-black/5 text-slate-400 hover:text-slate-800'}
                     `}
                   >
@@ -350,53 +355,57 @@ export default function ZenFlowApp() {
                 </div>
 
                 <div className="text-center space-y-2">
-                  <h2 className="text-4xl font-bold tracking-tight">{activeScene.title}</h2>
+                  <h2 className="text-3xl md:text-5xl font-bold tracking-tight">{activeScene.title}</h2>
                   <div className="inline-flex items-center gap-2 opacity-60">
                      <Radio size={14} className={isPlaying ? 'animate-pulse' : ''} />
-                     <span className="text-xs font-mono uppercase tracking-widest">{isPlaying ? "Playing" : "Paused"}</span>
+                     <span className="text-xs font-mono uppercase tracking-widest">{isPlaying ? "Active Session" : "Paused"}</span>
                   </div>
                 </div>
               </div>
 
-              {/* 右侧：番茄钟面板 (新增) */}
-              <div className={`relative w-full lg:w-80 p-6 rounded-3xl border backdrop-blur-md transition-colors
+              {/* Right: Pomodoro Panel */}
+              {/* Mobile Fix: Width full, order-2 to sit below player */}
+              <div className={`relative w-full max-w-sm lg:w-80 p-6 rounded-3xl border backdrop-blur-md transition-colors order-2
                  ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white/60 border-black/5 shadow-lg'}
               `}>
-                <div className="flex items-center gap-2 mb-6 opacity-50">
-                   <Timer size={16} />
-                   <span className="text-xs font-mono font-bold uppercase tracking-widest">Focus Timer</span>
+                <div className="flex items-center justify-between mb-6 opacity-50">
+                   <div className="flex items-center gap-2">
+                     <Timer size={16} />
+                     <span className="text-xs font-mono font-bold uppercase tracking-widest">Focus Timer</span>
+                   </div>
+                   {/* Mobile Fix: Close button for timer only makes sense if it was a modal, keeping it simple here */}
                 </div>
 
                 <div className="text-center mb-8">
-                  <div className="text-6xl font-mono font-bold tabular-nums tracking-tighter mb-2">
+                  <div className="text-5xl md:text-6xl font-mono font-bold tabular-nums tracking-tighter mb-4">
                     {formatTime(timeLeft)}
                   </div>
-                  <div className="flex justify-center gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => resetTimer('work')}
-                      className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${timerMode === 'work' ? activeScene.accent + ' text-white' : 'opacity-30 hover:opacity-100'}`}
+                      className={`py-2 text-xs font-bold rounded-lg transition-colors border ${timerMode === 'work' ? (theme === 'dark' ? 'bg-white text-black border-white' : 'bg-black text-white border-black') : 'border-transparent opacity-50 hover:opacity-100'}`}
                     >
-                      WORK
+                      WORK (25)
                     </button>
                     <button
                       onClick={() => resetTimer('break')}
-                      className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${timerMode === 'break' ? 'bg-green-500 text-white' : 'opacity-30 hover:opacity-100'}`}
+                      className={`py-2 text-xs font-bold rounded-lg transition-colors border ${timerMode === 'break' ? (theme === 'dark' ? 'bg-white text-black border-white' : 'bg-black text-white border-black') : 'border-transparent opacity-50 hover:opacity-100'}`}
                     >
-                      BREAK
+                      BREAK (5)
                     </button>
                   </div>
                 </div>
 
                 <button
                   onClick={toggleTimer}
-                  className={`w-full py-4 rounded-xl font-bold tracking-widest transition-all hover:brightness-110 active:scale-95
+                  className={`w-full py-4 rounded-xl font-bold tracking-widest transition-all hover:brightness-110 active:scale-95 shadow-lg
                     ${isTimerRunning
                       ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200 text-slate-600')
-                      : activeScene.accent + ' text-white shadow-lg shadow-' + activeScene.color.split('-')[1] + '-500/30'
+                      : activeScene.accent + ' text-white'
                     }
                   `}
                 >
-                  {isTimerRunning ? "PAUSE" : "START TIMER"}
+                  {isTimerRunning ? "PAUSE" : "START SESSION"}
                 </button>
               </div>
 
