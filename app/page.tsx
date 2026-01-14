@@ -3,24 +3,24 @@
 import React, { useState, useRef, useEffect, memo } from "react";
 import {
   Play, Pause, Zap, Moon, Coffee, Volume2, Wind, SkipForward,
-  Radio, Sun, Monitor, Timer
+  Radio, Sun, Monitor, Timer, Signal
 } from "lucide-react";
 
-// --- 1. 静态数据 (放在组件外，避免重复分配内存) ---
+// --- 1. 静态数据 ---
 const SCENES = [
   {
     id: "focus",
-    title: "DEEP FOCUS",
-    subtitle: "High Beta Waves",
-    freq: "14-30 Hz",
+    title: "ANIME LO-FI", // 你指定的房间
+    subtitle: "Zeno.fm Live",
+    freq: "LIVE RADIO",
     icon: <Zap size={24} />,
-    color: "text-blue-600 dark:text-cyan-400",
-    bgGradient: "from-blue-100 to-indigo-100 dark:from-cyan-900/40 dark:to-blue-900/40",
-    accent: "bg-blue-500 dark:bg-cyan-400",
-    playlist: [
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
-    ]
+    color: "text-purple-500 dark:text-purple-400",
+    bgGradient: "from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40",
+    accent: "bg-purple-500 dark:bg-purple-400",
+    // 关键点：使用 embedUrl 而不是 playlist
+    // Zeno 官方播放器地址
+    embedUrl: "https://zeno.fm/player/anime-lo-fi-room",
+    playlist: []
   },
   {
     id: "relax",
@@ -32,8 +32,8 @@ const SCENES = [
     bgGradient: "from-teal-100 to-emerald-100 dark:from-emerald-900/40 dark:to-teal-900/40",
     accent: "bg-teal-500 dark:bg-emerald-400",
     playlist: [
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
+      "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3",
+      "https://cdn.pixabay.com/download/audio/2022/11/02/audio_c1f6e1f6e8.mp3"
     ]
   },
   {
@@ -46,8 +46,8 @@ const SCENES = [
     bgGradient: "from-indigo-100 to-purple-100 dark:from-violet-900/40 dark:to-indigo-900/40",
     accent: "bg-indigo-500 dark:bg-violet-400",
     playlist: [
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"
+      "https://cdn.pixabay.com/download/audio/2021/08/09/audio_88447e769f.mp3",
+      "https://cdn.pixabay.com/download/audio/2023/02/28/audio_550d815533.mp3"
     ]
   },
   {
@@ -60,20 +60,19 @@ const SCENES = [
     bgGradient: "from-orange-100 to-amber-100 dark:from-amber-900/40 dark:to-orange-900/40",
     accent: "bg-orange-500 dark:bg-amber-400",
     playlist: [
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3"
+      "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3",
+      "https://cdn.pixabay.com/download/audio/2022/10/25/audio_1650b32c25.mp3"
     ]
   },
 ];
 
-// --- 2. 独立子组件：时钟 (解决每秒重绘整个页面的卡顿问题) ---
+// --- 2. 独立子组件 ---
 const LiveClock = memo(() => {
   const [time, setTime] = useState(new Date());
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-
   return (
     <h1 className="text-[18vw] md:text-[15vw] leading-none font-bold font-mono tracking-tighter opacity-90 select-none will-change-contents">
       {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -82,7 +81,6 @@ const LiveClock = memo(() => {
 });
 LiveClock.displayName = "LiveClock";
 
-// --- 3. 独立子组件：番茄钟 (解决倒计时卡顿) ---
 const PomodoroTimer = ({ accentColor, theme }: { accentColor: string, theme: string }) => {
   const [timerMode, setTimerMode] = useState<'work' | 'break'>('work');
   const [timeLeft, setTimeLeft] = useState(25 * 60);
@@ -98,7 +96,6 @@ const PomodoroTimer = ({ accentColor, theme }: { accentColor: string, theme: str
     return () => clearInterval(interval);
   }, [isTimerRunning, timeLeft]);
 
-  const toggleTimer = () => setIsTimerRunning(!isTimerRunning);
   const resetTimer = (mode: 'work' | 'break') => {
     setTimerMode(mode);
     setIsTimerRunning(false);
@@ -141,7 +138,7 @@ const PomodoroTimer = ({ accentColor, theme }: { accentColor: string, theme: str
       </div>
 
       <button
-        onClick={toggleTimer}
+        onClick={() => setIsTimerRunning(!isTimerRunning)}
         className={`w-full py-4 rounded-xl font-bold tracking-widest transition-transform active:scale-95 shadow-lg
           ${isTimerRunning
             ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200 text-slate-600')
@@ -155,7 +152,7 @@ const PomodoroTimer = ({ accentColor, theme }: { accentColor: string, theme: str
   );
 };
 
-// --- 4. 主程序 ---
+// --- 3. 主程序 ---
 export default function ZenFlowApp() {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [activeScene, setActiveScene] = useState<typeof SCENES[0] | null>(null);
@@ -165,8 +162,15 @@ export default function ZenFlowApp() {
   const [isScreensaver, setIsScreensaver] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // --- 播放控制 (逻辑未变，但性能更好) ---
+  // 播放逻辑：支持 MP3 歌单 和 Iframe 直播
   const playRandomTrack = (scene: typeof SCENES[0]) => {
+    // 如果是 Embed 模式（直播流），逻辑由 iframe 控制，不需要设置 audio src
+    if (scene.embedUrl) {
+      setIsPlaying(true);
+      return;
+    }
+
+    // 正常的 MP3 模式
     const list = scene.playlist;
     if (list.length === 1) {
       setCurrentSongUrl(list[0]);
@@ -184,7 +188,8 @@ export default function ZenFlowApp() {
   };
 
   useEffect(() => {
-    if (audioRef.current) {
+    // 仅控制 MP3 模式的音量和播放
+    if (audioRef.current && !activeScene?.embedUrl) {
       audioRef.current.volume = volume;
       if (isPlaying) {
         audioRef.current.play().catch(e => console.log("Audio Error:", e));
@@ -192,7 +197,7 @@ export default function ZenFlowApp() {
         audioRef.current.pause();
       }
     }
-  }, [isPlaying, volume, currentSongUrl]);
+  }, [isPlaying, volume, currentSongUrl, activeScene]);
 
   const handleSceneSelect = (scene: typeof SCENES[0]) => {
     setActiveScene(scene);
@@ -211,17 +216,29 @@ export default function ZenFlowApp() {
         ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-gray-50 text-slate-800'}
       `}>
 
+        {/* 普通 MP3 播放器 */}
         <audio ref={audioRef} key={currentSongUrl} src={currentSongUrl} onEnded={() => activeScene && playRandomTrack(activeScene)} />
 
-        {/* --- 背景层 (使用 transform-gpu 加速) --- */}
+        {/* --- 核心魔法：Zeno 隐藏式 Iframe 播放器 --- */}
+        {/* 只有当场景有 embedUrl 且 正在播放时，才挂载这个 iframe */}
+        {activeScene?.embedUrl && isPlaying && (
+           <div className="fixed bottom-0 left-0 w-1 h-1 opacity-0 pointer-events-none overflow-hidden">
+             {/* 使用 iframe 加载 Zeno 播放器页面，?autoplay=1 尝试自动播放 */}
+             <iframe
+               src={`${activeScene.embedUrl}?autoplay=1`}
+               allow="autoplay"
+               title="Zeno Radio"
+             ></iframe>
+           </div>
+        )}
+
+        {/* --- 背景层 --- */}
         <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-          {/* 网格背景 */}
           <div className={`absolute inset-0 bg-[size:40px_40px] opacity-30
             ${theme === 'dark'
               ? 'bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)]'
               : 'bg-[linear-gradient(to_right,#00000008_1px,transparent_1px),linear-gradient(to_bottom,#00000008_1px,transparent_1px)]'}
           `}></div>
-          {/* 顶部光晕 (移除 transition-all 以减少计算，只改变 opacity) */}
           <div className={`absolute top-[-20%] left-1/2 -translate-x-1/2 w-[80vw] h-[60vh] rounded-full blur-[80px] opacity-30 transform-gpu
              ${activeScene ? activeScene.bgGradient : (theme === 'dark' ? 'bg-blue-900/20' : 'bg-blue-200/40')}
           `}></div>
@@ -229,7 +246,6 @@ export default function ZenFlowApp() {
 
         {/* --- Header --- */}
         <header className="fixed top-0 left-0 w-full px-4 py-4 md:p-6 flex justify-between items-center z-40 bg-gradient-to-b from-black/5 to-transparent pointer-events-none">
-          {/* pointer-events-auto 确保按钮可点击，header背景不挡触摸 */}
           <div className="flex items-center gap-2 md:gap-3 cursor-pointer group pointer-events-auto" onClick={handleBack}>
             <div className={`relative w-7 h-7 md:w-8 md:h-8 flex items-center justify-center border rounded-md transition-colors
               ${theme === 'dark' ? 'border-white/20' : 'border-black/10'}
@@ -242,6 +258,7 @@ export default function ZenFlowApp() {
           </div>
 
           <div className="flex items-center gap-2 md:gap-4 pointer-events-auto">
+            {/* 音量条：如果是直播模式，提示音量不可用 */}
             {activeScene && (
               <div className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-md transition-colors
                 ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white/60 border-black/5'}
@@ -250,70 +267,24 @@ export default function ZenFlowApp() {
                 <input
                   type="range" min="0" max="1" step="0.01" value={volume}
                   onChange={(e) => setVolume(parseFloat(e.target.value))}
-                  className="w-20 h-1 rounded-lg appearance-none cursor-pointer bg-current opacity-30 hover:opacity-100"
+                  disabled={!!activeScene.embedUrl} // 直播模式禁用
+                  className={`w-20 h-1 rounded-lg appearance-none cursor-pointer bg-current opacity-30 hover:opacity-100 ${activeScene.embedUrl ? 'cursor-not-allowed opacity-10' : ''}`}
                 />
               </div>
             )}
 
-            <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className={`p-2 rounded-full border active:scale-95 transition-transform
-                ${theme === 'dark' ? 'bg-white/10 border-white/10' : 'bg-white border-black/5 shadow-sm'}
-              `}
-            >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-             <button
-              onClick={() => setIsScreensaver(true)}
-              className={`p-2 rounded-full border active:scale-95 transition-transform
-                ${theme === 'dark' ? 'bg-white/10 border-white/10' : 'bg-white border-black/5 shadow-sm'}
-              `}
-            >
-              <Monitor size={18} />
-            </button>
+            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-full border active:scale-95 transition-transform bg-white/10 border-white/10"><Sun size={18} /></button>
+            <button onClick={() => setIsScreensaver(true)} className="p-2 rounded-full border active:scale-95 transition-transform bg-white/10 border-white/10"><Monitor size={18} /></button>
           </div>
         </header>
-
-        {/* --- Screensaver (性能优化版) --- */}
-        {isScreensaver && (
-           <div
-             className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black text-white animate-fade-in touch-none"
-             onClick={() => setIsScreensaver(false)}
-           >
-             {/* 减少背景层级 */}
-             <div className="absolute inset-0 bg-black/40 z-0"></div>
-             {/* 光晕：使用 transform-gpu */}
-             <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] rounded-full blur-[100px] opacity-20 animate-pulse-slow transform-gpu
-               ${activeScene ? activeScene.accent.replace('bg-', 'bg-') : 'bg-blue-500'}
-             `}></div>
-
-             <div className="z-10 text-center space-y-4 select-none">
-               {/* 这里的时钟已经是独立组件，不会导致父组件重绘 */}
-               <LiveClock />
-               <p className="text-sm md:text-3xl font-light opacity-50 tracking-[0.5em] uppercase">
-                 {activeScene ? activeScene.title : "SYSTEM IDLE"}
-               </p>
-               <p className="text-xs opacity-30 mt-12 animate-pulse">Tap to wake up</p>
-             </div>
-           </div>
-        )}
 
         {/* --- Main Content --- */}
         <main className="relative container mx-auto px-4 pt-24 pb-12 md:px-6 min-h-screen flex flex-col justify-center items-center z-10">
 
-          {/* 1. Scene Selector */}
           {!activeScene && (
             <div className="w-full max-w-6xl animate-fade-in-up">
               <div className="text-center mb-10 md:mb-16 space-y-3">
-                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-mono tracking-widest uppercase
-                  ${theme === 'dark' ? 'border-white/10 bg-white/5 text-white/50' : 'border-black/10 bg-black/5 text-slate-500'}
-                `}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                  Ready to Focus
-                </div>
-                <h1 className="text-4xl md:text-7xl font-bold tracking-tighter opacity-90">
-                  SELECT MODE
-                </h1>
+                 <h1 className="text-4xl md:text-7xl font-bold tracking-tighter opacity-90">SELECT MODE</h1>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
@@ -321,40 +292,21 @@ export default function ZenFlowApp() {
                   <button
                     key={scene.id}
                     onClick={() => handleSceneSelect(scene)}
-                    // 移除 overflow-hidden 和复杂阴影，提升移动端渲染性能
                     className={`group relative h-48 md:h-80 rounded-2xl border transition-all duration-300 active:scale-[0.98]
-                      ${theme === 'dark'
-                        ? 'bg-[#0f172a] border-white/10'
-                        : 'bg-white border-black/5 shadow-sm'}
+                      ${theme === 'dark' ? 'bg-[#0f172a] border-white/10' : 'bg-white border-black/5 shadow-sm'}
                     `}
                   >
                     <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${scene.bgGradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-
-                    {/* 静态化的背景图标，减少计算 */}
-                    <div className={`absolute -bottom-8 -right-8 opacity-5 transform rotate-12 scale-150 ${scene.color} pointer-events-none`}>
-                      <div className="scale-[5]">{scene.icon}</div>
-                    </div>
-
                     <div className="absolute inset-0 flex flex-col justify-between p-5 md:p-6 z-10">
                       <div className="flex justify-between items-start">
-                        <div className={`p-2 md:p-3 rounded-xl border transition-colors
-                          ${theme === 'dark' ? 'bg-white/5 border-white/5 text-white/80' : 'bg-white border-black/5 text-slate-600'}
-                          group-hover:bg-white/20 group-hover:text-white
-                        `}>
+                        <div className={`p-2 md:p-3 rounded-xl border transition-colors ${theme === 'dark' ? 'bg-white/5 border-white/5 text-white/80' : 'bg-white border-black/5 text-slate-600'} group-hover:bg-white/20 group-hover:text-white`}>
                           {scene.icon}
                         </div>
-                        <div className="text-[10px] font-mono opacity-40 font-bold tracking-wider">
-                           {scene.freq}
-                        </div>
+                        <div className="text-[10px] font-mono opacity-40 font-bold tracking-wider">{scene.freq}</div>
                       </div>
-
                       <div className="space-y-1 text-left">
-                        <p className={`font-mono text-[9px] md:text-[10px] uppercase tracking-widest opacity-60 group-hover:text-white ${scene.color} dark:text-opacity-100`}>
-                          {scene.subtitle}
-                        </p>
-                        <h3 className="text-lg md:text-xl font-bold tracking-tight group-hover:text-white transition-colors">
-                          {scene.title}
-                        </h3>
+                        <p className={`font-mono text-[9px] md:text-[10px] uppercase tracking-widest opacity-60 group-hover:text-white ${scene.color} dark:text-opacity-100`}>{scene.subtitle}</p>
+                        <h3 className="text-lg md:text-xl font-bold tracking-tight group-hover:text-white transition-colors">{scene.title}</h3>
                       </div>
                     </div>
                   </button>
@@ -363,14 +315,10 @@ export default function ZenFlowApp() {
             </div>
           )}
 
-          {/* 2. Player Interface */}
           {activeScene && (
             <div className="flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-24 w-full max-w-6xl animate-fade-in relative pb-10">
-
-              {/* Left: Player Core */}
               <div className="flex flex-col items-center justify-center flex-1 order-1">
                 <div className="relative mb-8 md:mb-12 scale-90 md:scale-100">
-                  {/* 旋转动画优化：使用 transform-gpu */}
                   <div className={`absolute inset-[-40px] rounded-full border border-dashed opacity-20 transform-gpu ${isPlaying ? 'animate-spin-slow' : ''} ${theme === 'dark' ? 'border-white' : 'border-black'}`}></div>
                   <div className={`absolute inset-0 rounded-full blur-[60px] opacity-20 transition-opacity duration-1000 transform-gpu ${activeScene.accent} ${isPlaying ? 'opacity-40' : 'opacity-20'}`}></div>
 
@@ -387,66 +335,38 @@ export default function ZenFlowApp() {
                     )}
                   </button>
 
-                  <button
-                    onClick={(e) => { e.stopPropagation(); playRandomTrack(activeScene); }}
-                    className={`absolute -right-4 md:-right-8 top-1/2 -translate-y-1/2 p-3 rounded-full border shadow-lg active:scale-90 transition-transform z-20
-                       ${theme === 'dark' ? 'bg-slate-800 border-white/10 text-white/50' : 'bg-white border-black/5 text-slate-400'}
-                    `}
-                  >
-                    <SkipForward size={20} />
-                  </button>
+                  {/* 如果是 Embed 模式，隐藏切歌按钮，显示 Live 标志 */}
+                  {!activeScene.embedUrl && (
+                    <button onClick={(e) => { e.stopPropagation(); playRandomTrack(activeScene); }} className="absolute -right-4 md:-right-8 top-1/2 -translate-y-1/2 p-3 rounded-full border shadow-lg active:scale-90 transition-transform z-20 bg-white/10 border-white/10">
+                      <SkipForward size={20} />
+                    </button>
+                  )}
                 </div>
 
                 <div className="text-center space-y-2">
                   <h2 className="text-3xl md:text-5xl font-bold tracking-tight">{activeScene.title}</h2>
                   <div className="inline-flex items-center gap-2 opacity-60">
-                     <Radio size={14} className={isPlaying ? 'animate-pulse' : ''} />
-                     <span className="text-xs font-mono uppercase tracking-widest">{isPlaying ? "Active Session" : "Paused"}</span>
+                     {activeScene.embedUrl ? <Signal size={14} className={isPlaying ? 'animate-pulse text-red-500' : ''} /> : <Radio size={14} className={isPlaying ? 'animate-pulse' : ''} />}
+                     <span className="text-xs font-mono uppercase tracking-widest">
+                       {activeScene.embedUrl ? (isPlaying ? "LIVE BROADCAST" : "OFFLINE") : (isPlaying ? "ACTIVE SESSION" : "PAUSED")}
+                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Right: Pomodoro Panel (已提取为独立组件，性能大大提升) */}
               <PomodoroTimer accentColor={activeScene.accent} theme={theme} />
-
             </div>
           )}
         </main>
       </div>
-
       <style jsx global>{`
-        /* 强制开启 GPU 加速 */
-        .transform-gpu {
-          transform: translate3d(0, 0, 0);
-        }
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .animate-spin-slow {
-          animation: spin-slow 12s linear infinite;
-        }
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.2; transform: translate(-50%, -50%) scale(1); }
-          50% { opacity: 0.4; transform: translate(-50%, -50%) scale(1.1); }
-        }
-        .animate-pulse-slow {
-          animation: pulse-slow 4s ease-in-out infinite;
-        }
-        @keyframes fade-in-up {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in-up {
-          animation: fade-in-up 0.5s ease-out forwards;
-        }
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out forwards;
-        }
+        .transform-gpu { transform: translate3d(0, 0, 0); }
+        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-spin-slow { animation: spin-slow 12s linear infinite; }
+        @keyframes fade-in-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards; }
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
       `}</style>
     </div>
   );
