@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
   // 2. 你的域名基准 (必须改！否则图片找不到)
   // 请替换成你 Vercel 的真实域名，不要带最后的斜杠
-  metadataBase: new URL("https://你的项目域名.vercel.app"),
+  metadataBase: new URL("https://www.zenflows.cloud"),
 
   // 3. 图标 (Favicon)
   icons: {
