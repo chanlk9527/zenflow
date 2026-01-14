@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, memo } from "react";
 import {
   Play, Pause, Zap, Moon, Coffee, Volume2, Wind, SkipForward,
-  Radio, Sun, Monitor, Timer, Signal, AlertCircle, Globe
+  Radio, Sun, Monitor, Timer, Signal, AlertCircle
 } from "lucide-react";
 
 // --- 1. 多语言字典配置 ---
@@ -81,7 +81,7 @@ const TRANSLATIONS = {
   }
 };
 
-// --- 2. 静态数据配置 (音源保持不变) ---
+// --- 2. 静态数据配置 ---
 const SCENES_CONFIG = [
   {
     id: "focus",
@@ -199,24 +199,46 @@ const PomodoroTimer = ({ accentColor, theme, lang }: { accentColor: string, them
 // --- 4. 主程序 ---
 export default function ZenFlowApp() {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-  const [lang, setLang] = useState<LangKey>('en'); // 默认语言 EN
+  const [lang, setLang] = useState<LangKey>('en');
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
   const [currentSongUrl, setCurrentSongUrl] = useState<string>("");
   const [isScreensaver, setIsScreensaver] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false); // 防止 hydration 错误
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // 获取当前语言的翻译包
-  const t = TRANSLATIONS[lang];
+  // --- NEW: 记忆功能 (Persistence) ---
+  useEffect(() => {
+    // 页面加载时读取本地存储
+    const savedTheme = localStorage.getItem('zenflow_theme') as 'light' | 'dark';
+    const savedLang = localStorage.getItem('zenflow_lang') as LangKey;
+    const savedVolume = localStorage.getItem('zenflow_volume');
 
-  // 根据 ID 获取当前场景的配置和动态翻译的标题
+    if (savedTheme) setTheme(savedTheme);
+    if (savedLang) setLang(savedLang);
+    if (savedVolume) setVolume(parseFloat(savedVolume));
+
+    setIsInitialized(true); // 标记初始化完成，显示 UI
+  }, []);
+
+  // 监听变化并保存
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem('zenflow_theme', theme);
+      localStorage.setItem('zenflow_lang', lang);
+      localStorage.setItem('zenflow_volume', volume.toString());
+    }
+  }, [theme, lang, volume, isInitialized]);
+
+  // --- 结束记忆功能 ---
+
+  const t = TRANSLATIONS[lang];
   const activeScene = activeSceneId ? SCENES_CONFIG.find(s => s.id === activeSceneId) : null;
   const activeSceneTranslation = activeSceneId ? t.scenes[activeSceneId as keyof typeof t.scenes] : null;
 
-  // 切换语言函数
   const toggleLang = () => {
     if (lang === 'en') setLang('cn');
     else if (lang === 'cn') setLang('jp');
@@ -280,6 +302,9 @@ export default function ZenFlowApp() {
     setErrorMsg(null);
   };
 
+  // 如果还没读取完本地配置，先渲染一个空壳，防止闪烁
+  if (!isInitialized) return <div className="min-h-screen bg-slate-950"></div>;
+
   return (
     <div className={`${theme} transition-colors duration-500`}>
       <div className={`relative min-h-screen font-sans transition-colors duration-500
@@ -336,7 +361,6 @@ export default function ZenFlowApp() {
                 />
               </div>
             )}
-            {/* 语言切换按钮 */}
             <button
               onClick={toggleLang}
               className="p-2 rounded-full border active:scale-95 transition-transform bg-white/10 border-white/10 flex items-center justify-center w-9 h-9 font-mono text-xs font-bold"
@@ -438,7 +462,6 @@ export default function ZenFlowApp() {
                 </div>
 
                 <div className="text-center space-y-2">
-                  {/* 动态翻译场景标题 */}
                   <h2 className="text-3xl md:text-5xl font-bold tracking-tight">{activeSceneTranslation.title}</h2>
                   <div className="inline-flex items-center gap-2 opacity-60">
                      {errorMsg ? (
