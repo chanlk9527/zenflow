@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, memo } from "react";
 import {
   Play, Pause, Zap, Moon, Coffee, Volume2, Wind, SkipForward,
-  Radio, Sun, Monitor, Timer, Signal, AlertCircle, Bell, Settings
+  Radio, Sun, Monitor, Timer, Signal, AlertCircle, Bell, Loader2
 } from "lucide-react";
 
 // --- 1. 多语言字典配置 ---
@@ -12,21 +12,20 @@ type LangKey = 'en' | 'cn' | 'jp';
 const TRANSLATIONS = {
   en: {
     app_title: "ZENFLOW",
-    select_mode: "SELECT MODE",
-    ready_focus: "Ready to Focus",
+    select_mode: "SELECT FREQUENCY",
+    ready_focus: "System Ready",
     system_idle: "SYSTEM IDLE",
-    tap_wake: "Tap to wake up",
-    playing: "LIVE SIGNAL ACQUIRED",
+    tap_wake: "Click to resume session",
+    playing: "LIVE SIGNAL ACTIVE",
     paused: "SIGNAL PAUSED",
-    error: "Stream unavailable, retry...",
+    error: "Signal Lost. Retrying...",
     timer: {
-      title: "Focus Timer",
-      work: "Preset: Work (25m)",
-      break: "Preset: Break (5m)",
-      custom: "Custom Duration",
-      start: "START SESSION",
-      pause: "PAUSE",
-      ended: "Session Complete"
+      title: "FOCUS TIMER",
+      work: "WORK",
+      break: "BREAK",
+      start: "INITIATE",
+      pause: "HALT",
+      ended: "SESSION COMPLETE"
     },
     scenes: {
       focus: { title: "LO-FI STUDY", subtitle: "Laut.fm Stream" },
@@ -38,20 +37,19 @@ const TRANSLATIONS = {
   cn: {
     app_title: "心流电台",
     select_mode: "选择频率",
-    ready_focus: "准备进入专注状态",
+    ready_focus: "系统就绪",
     system_idle: "系统待机",
-    tap_wake: "点击屏幕唤醒",
+    tap_wake: "点击唤醒",
     playing: "直播信号已连接",
     paused: "信号暂停",
-    error: "流媒体连接失败，请重试...",
+    error: "连接中断，重试中...",
     timer: {
-      title: "番茄专注钟",
-      work: "预设：工作 (25分钟)",
-      break: "预设：休息 (5分钟)",
-      custom: "自定义时长 (拖动调节)",
-      start: "开始专注",
-      pause: "暂停计时",
-      ended: "专注结束"
+      title: "专注计时器",
+      work: "工作",
+      break: "休息",
+      start: "启动",
+      pause: "暂停",
+      ended: "计时结束"
     },
     scenes: {
       focus: { title: "深度专注", subtitle: "Lo-Fi 学习频道" },
@@ -62,21 +60,20 @@ const TRANSLATIONS = {
   },
   jp: {
     app_title: "ゼン・フロー",
-    select_mode: "モード選択",
-    ready_focus: "集中する準備はできましたか",
+    select_mode: "周波数選択",
+    ready_focus: "準備完了",
     system_idle: "スタンバイ",
     tap_wake: "タップして再開",
-    playing: "ライブ信号接続中",
+    playing: "接続中",
     paused: "一時停止",
-    error: "接続エラー、再試行してください...",
+    error: "接続エラー...",
     timer: {
-      title: "ポモドーロ",
-      work: "集中 (25分)",
-      break: "休憩 (5分)",
-      custom: "カスタム設定",
-      start: "セッション開始",
-      pause: "一時停止",
-      ended: "終了しました"
+      title: "タイマー",
+      work: "集中",
+      break: "休憩",
+      start: "開始",
+      pause: "停止",
+      ended: "終了"
     },
     scenes: {
       focus: { title: "集中学習", subtitle: "Lo-Fi ストリーム" },
@@ -94,7 +91,7 @@ const SCENES_CONFIG = [
     freq: "LIVE",
     icon: <Zap size={24} />,
     color: "text-purple-500 dark:text-purple-400",
-    bgGradient: "from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40",
+    bgGradient: "from-purple-500/20 via-fuchsia-500/20 to-indigo-500/20",
     accent: "bg-purple-500 dark:bg-purple-400",
     playlist: ["https://stream.laut.fm/lofi"]
   },
@@ -103,7 +100,7 @@ const SCENES_CONFIG = [
     freq: "LIVE",
     icon: <Wind size={24} />,
     color: "text-teal-600 dark:text-emerald-400",
-    bgGradient: "from-teal-100 to-emerald-100 dark:from-emerald-900/40 dark:to-teal-900/40",
+    bgGradient: "from-teal-500/20 via-emerald-500/20 to-cyan-500/20",
     accent: "bg-teal-500 dark:bg-emerald-400",
     playlist: ["https://ice2.somafm.com/groovesalad-128-mp3"]
   },
@@ -112,7 +109,7 @@ const SCENES_CONFIG = [
     freq: "LIVE",
     icon: <Moon size={24} />,
     color: "text-indigo-600 dark:text-violet-400",
-    bgGradient: "from-indigo-100 to-purple-100 dark:from-violet-900/40 dark:to-indigo-900/40",
+    bgGradient: "from-indigo-500/20 via-purple-500/20 to-slate-500/20",
     accent: "bg-indigo-500 dark:bg-violet-400",
     playlist: ["https://ice2.somafm.com/dronezone-128-mp3"]
   },
@@ -121,13 +118,39 @@ const SCENES_CONFIG = [
     freq: "LIVE",
     icon: <Coffee size={24} />,
     color: "text-orange-600 dark:text-amber-400",
-    bgGradient: "from-orange-100 to-amber-100 dark:from-amber-900/40 dark:to-orange-900/40",
+    bgGradient: "from-orange-500/20 via-amber-500/20 to-red-500/20",
     accent: "bg-orange-500 dark:bg-amber-400",
     playlist: ["https://ice2.somafm.com/beatblender-128-mp3"]
   },
 ];
 
-// --- 3. 辅助组件 ---
+// --- 3. 视觉增强组件 ---
+
+// 噪点覆盖层：增加高级胶片质感
+const NoiseOverlay = memo(() => (
+  <div className="fixed inset-0 z-[1] pointer-events-none opacity-[0.03] mix-blend-overlay"
+    style={{
+      backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+    }}
+  />
+));
+NoiseOverlay.displayName = "NoiseOverlay";
+
+// 极光背景：缓慢移动的彩色光斑
+const AuroraBackground = ({ activeScene }: { activeScene: any }) => {
+  return (
+    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+      <div className={`absolute top-[-10%] left-[-10%] w-[70vw] h-[70vw] rounded-full blur-[100px] opacity-30 animate-aurora-1 mix-blend-screen
+         ${activeScene ? activeScene.bgGradient.split(' ')[0].replace('/20', '/30') : 'bg-blue-500/10'} transition-colors duration-1000`}></div>
+      <div className={`absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] rounded-full blur-[120px] opacity-30 animate-aurora-2 mix-blend-screen
+         ${activeScene ? activeScene.bgGradient.split(' ')[2].replace('/20', '/30') : 'bg-purple-500/10'} transition-colors duration-1000 delay-1000`}></div>
+      {/* 网格纹理 */}
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+    </div>
+  );
+};
+
+// 动态时钟
 const LiveClock = memo(() => {
   const [time, setTime] = useState<string>("");
   useEffect(() => {
@@ -138,24 +161,21 @@ const LiveClock = memo(() => {
     return () => clearInterval(timer);
   }, []);
   return (
-    <h1 className="text-[18vw] md:text-[15vw] leading-none font-bold font-mono tracking-tighter opacity-90 select-none will-change-contents min-h-[1em]">
+    <h1 className="text-[15vw] leading-none font-bold font-mono tracking-tighter opacity-90 select-none will-change-contents min-h-[1em] drop-shadow-2xl">
       {time}
     </h1>
   );
 });
 LiveClock.displayName = "LiveClock";
 
-// --- 4. 升级版番茄钟组件 ---
+// --- 4. 番茄钟组件 ---
 const PomodoroTimer = ({ accentColor, theme, lang }: { accentColor: string, theme: string, lang: LangKey }) => {
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [sliderValue, setSliderValue] = useState(25); // 分钟数
+  const [sliderValue, setSliderValue] = useState(25);
   const t = TRANSLATIONS[lang].timer;
-
-  // 提示音 Ref
   const alarmRef = useRef<HTMLAudioElement | null>(null);
 
-  // 初始化提示音 (使用 Pixabay 的清脆风铃声)
   useEffect(() => {
     alarmRef.current = new Audio("https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3");
   }, []);
@@ -165,24 +185,13 @@ const PomodoroTimer = ({ accentColor, theme, lang }: { accentColor: string, them
     if (isTimerRunning && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prev) => prev - 1);
-        // 同步更新滑块位置（可选，为了让滑块倒着走，但通常滑块表示设定值，倒计时显示剩余值，这里不让滑块动，体验更好）
       }, 1000);
     } else if (timeLeft === 0 && isTimerRunning) {
-      // 倒计时结束
       setIsTimerRunning(false);
-      // 播放提示音
-      if (alarmRef.current) {
-        alarmRef.current.play().catch(e => console.log("Alarm play failed", e));
-      }
-      // 可以加个系统通知（浏览器支持的话）
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(t.ended);
-      } else if ("Notification" in window && Notification.permission !== "denied") {
-        Notification.requestPermission();
-      }
+      if (alarmRef.current) alarmRef.current.play().catch(() => {});
     }
     return () => clearInterval(interval);
-  }, [isTimerRunning, timeLeft, t.ended]);
+  }, [isTimerRunning, timeLeft]);
 
   const setPreset = (minutes: number) => {
     setIsTimerRunning(false);
@@ -204,107 +213,71 @@ const PomodoroTimer = ({ accentColor, theme, lang }: { accentColor: string, them
   };
 
   return (
-    <div className={`relative w-full max-w-sm lg:w-80 p-6 rounded-3xl border backdrop-blur-md transition-colors order-2
-       ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white/60 border-black/5 shadow-lg'}
+    <div className={`relative w-full max-w-sm lg:w-80 p-6 rounded-3xl border backdrop-blur-xl transition-all duration-500 order-2 hover:shadow-2xl
+       ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white/60 border-black/5 shadow-lg hover:bg-white/80'}
     `}>
-      <div className="flex items-center justify-between mb-6 opacity-50">
+      <div className="flex items-center justify-between mb-6 opacity-60">
          <div className="flex items-center gap-2">
-            <Timer size={16} />
-            <span className="text-xs font-mono font-bold uppercase tracking-widest">{t.title}</span>
+            <Timer size={14} />
+            <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em]">{t.title}</span>
          </div>
-         {/* 如果时间到了，显示铃铛图标 */}
          {timeLeft === 0 && <Bell size={16} className="text-yellow-500 animate-bounce" />}
       </div>
 
-      <div className="text-center mb-6">
-        {/* 大号时间显示 */}
-        <div className={`text-6xl font-mono font-bold tabular-nums tracking-tighter mb-6 will-change-contents transition-colors
+      <div className="text-center mb-8">
+        <div className={`text-6xl font-mono font-bold tabular-nums tracking-tighter mb-8 transition-all
+           ${isTimerRunning ? 'scale-110 opacity-100' : 'scale-100 opacity-80'}
            ${timeLeft === 0 ? 'text-green-500 animate-pulse' : ''}
         `}>
           {timeLeft === 0 ? "00:00" : formatTime(timeLeft)}
         </div>
 
-        {/* --- 核心升级：波轮滑块 (Range Slider) --- */}
-        <div className="mb-6 px-2 group">
-          <div className="flex justify-between text-[10px] font-mono opacity-30 mb-2 uppercase">
-             <span>1 min</span>
-             <span>{t.custom}</span>
-             <span>90 min</span>
-          </div>
+        {/* 升级版波轮滑块 */}
+        <div className="mb-6 px-1 group relative">
           <input
-            type="range"
-            min="1"
-            max="90"
-            step="1"
+            type="range" min="1" max="90" step="1"
             value={sliderValue}
             onChange={handleSliderChange}
-            className={`w-full h-2 rounded-lg appearance-none cursor-pointer transition-all
-              ${theme === 'dark' ? 'bg-white/10' : 'bg-black/10'}
-            `}
-            style={{
-               // 动态生成滑块背景，让它看起来像被填充满了
-               backgroundSize: `${(sliderValue / 90) * 100}% 100%`,
-            }}
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-current opacity-20 hover:opacity-50 transition-opacity z-10 relative"
           />
-          {/* 滑块下方的当前选择提示 */}
-          <div className="mt-2 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-            {sliderValue} Minutes
+          {/* 自定义进度条背景 */}
+          <div className={`absolute top-0 left-1 h-1.5 rounded-full pointer-events-none transition-all duration-300 opacity-80 ${accentColor.replace('bg-', 'bg-')}`}
+               style={{width: `${(sliderValue / 90) * 100}%`}}></div>
+
+          <div className="flex justify-between text-[9px] font-mono opacity-30 mt-2 uppercase tracking-widest">
+             <span>1m</span>
+             <span className="group-hover:opacity-100 opacity-0 transition-opacity text-current font-bold">{sliderValue} mins</span>
+             <span>90m</span>
           </div>
         </div>
 
-        {/* 预设按钮 */}
-        <div className="grid grid-cols-2 gap-2 mb-6">
-          <button onClick={() => setPreset(25)} className={`py-2 text-[10px] font-bold rounded-lg transition-colors border ${sliderValue === 25 ? (theme === 'dark' ? 'bg-white text-black border-white' : 'bg-black text-white border-black') : 'border-transparent opacity-50 hover:opacity-100'}`}>
-            25m (Focus)
-          </button>
-          <button onClick={() => setPreset(5)} className={`py-2 text-[10px] font-bold rounded-lg transition-colors border ${sliderValue === 5 ? (theme === 'dark' ? 'bg-white text-black border-white' : 'bg-black text-white border-black') : 'border-transparent opacity-50 hover:opacity-100'}`}>
-            5m (Rest)
-          </button>
+        <div className="grid grid-cols-2 gap-3">
+          {[25, 5].map(min => (
+             <button key={min} onClick={() => setPreset(min)}
+               className={`py-2 text-[10px] font-bold rounded-lg transition-all border
+                 ${sliderValue === min
+                   ? (theme === 'dark' ? 'bg-white text-black border-white' : 'bg-black text-white border-black')
+                   : 'border-transparent bg-current/5 hover:bg-current/10'}
+               `}>
+               {min === 25 ? t.work : t.break}
+             </button>
+          ))}
         </div>
       </div>
 
       <button
-        onClick={() => {
-           if (timeLeft === 0) setPreset(sliderValue); // 如果结束了，点击开始重置
-           else setIsTimerRunning(!isTimerRunning);
-        }}
-        className={`w-full py-4 rounded-xl font-bold tracking-widest transition-transform active:scale-95 shadow-lg
+        onClick={() => timeLeft === 0 ? setPreset(sliderValue) : setIsTimerRunning(!isTimerRunning)}
+        className={`w-full py-4 rounded-xl font-bold tracking-[0.2em] text-xs transition-all active:scale-95 shadow-lg overflow-hidden relative group
           ${isTimerRunning
             ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200 text-slate-600')
             : (timeLeft === 0 ? 'bg-green-500 text-white' : accentColor + ' text-white')
           }
         `}
       >
-        {timeLeft === 0 ? "RESET" : (isTimerRunning ? t.pause : t.start)}
+        <span className="relative z-10">{timeLeft === 0 ? "RESET" : (isTimerRunning ? t.pause : t.start)}</span>
+        {/* 按钮内的流光动效 */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:animate-shine" />
       </button>
-
-      {/* CSS for Custom Range Slider Styling */}
-      <style jsx>{`
-        input[type=range]::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          height: 16px;
-          width: 6px;
-          border-radius: 2px;
-          background: ${theme === 'dark' ? '#fff' : '#000'};
-          cursor: pointer;
-          margin-top: -3px; /* You need to specify a margin in Chrome, but in Firefox and IE it is automatic */
-          box-shadow: 0 0 10px rgba(0,0,0,0.2);
-        }
-        input[type=range]::-moz-range-thumb {
-          height: 16px;
-          width: 6px;
-          border-radius: 2px;
-          background: ${theme === 'dark' ? '#fff' : '#000'};
-          cursor: pointer;
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-          width: 100%;
-          height: 8px;
-          cursor: pointer;
-          background: transparent;
-          border-radius: 4px;
-        }
-      `}</style>
     </div>
   );
 };
@@ -320,6 +293,7 @@ export default function ZenFlowApp() {
   const [isScreensaver, setIsScreensaver] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoadingStream, setIsLoadingStream] = useState(false); // 直播加载状态
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -328,7 +302,6 @@ export default function ZenFlowApp() {
     const savedTheme = localStorage.getItem('zenflow_theme') as 'light' | 'dark';
     const savedLang = localStorage.getItem('zenflow_lang') as LangKey;
     const savedVolume = localStorage.getItem('zenflow_volume');
-
     if (savedTheme) setTheme(savedTheme);
     if (savedLang) setLang(savedLang);
     if (savedVolume) setVolume(parseFloat(savedVolume));
@@ -355,6 +328,7 @@ export default function ZenFlowApp() {
 
   const playRandomTrack = (scene: typeof SCENES_CONFIG[0]) => {
     setErrorMsg(null);
+    setIsLoadingStream(true); // 开始加载动画
     const list = scene.playlist;
     if (!list || list.length === 0) return;
 
@@ -363,7 +337,7 @@ export default function ZenFlowApp() {
       setIsPlaying(true);
       return;
     }
-
+    // Random logic
     let nextUrl;
     do {
       const randomIndex = Math.floor(Math.random() * list.length);
@@ -381,13 +355,17 @@ export default function ZenFlowApp() {
     if (isPlaying) {
       const playPromise = audio.play();
       if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.error("Playback error:", error);
-          setIsPlaying(false);
-        });
+        playPromise
+          .then(() => setIsLoadingStream(false)) // 播放成功，停止加载动画
+          .catch(error => {
+            console.error("Playback error:", error);
+            setIsPlaying(false);
+            setIsLoadingStream(false);
+          });
       }
     } else {
       audio.pause();
+      setIsLoadingStream(false);
     }
   }, [isPlaying, volume, currentSongUrl]);
 
@@ -408,15 +386,19 @@ export default function ZenFlowApp() {
     setActiveSceneId(null);
     setCurrentSongUrl("");
     setErrorMsg(null);
+    setIsLoadingStream(false);
   };
 
   if (!isInitialized) return <div className="min-h-screen bg-slate-950"></div>;
 
   return (
-    <div className={`${theme} transition-colors duration-500`}>
-      <div className={`relative min-h-screen font-sans transition-colors duration-500
-        ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-gray-50 text-slate-800'}
+    <div className={`${theme} transition-colors duration-1000`}>
+      <div className={`relative min-h-screen font-sans transition-colors duration-1000 overflow-hidden
+        ${theme === 'dark' ? 'bg-[#050505] text-white' : 'bg-[#F5F5F7] text-slate-800'}
       `}>
+
+        <NoiseOverlay />
+        <AuroraBackground activeScene={activeScene} />
 
         <audio
           ref={audioRef}
@@ -424,41 +406,39 @@ export default function ZenFlowApp() {
           src={currentSongUrl}
           preload="none"
           onEnded={() => activeScene && playRandomTrack(activeScene)}
+          onPlaying={() => setIsLoadingStream(false)} // 真正开始播放时，取消loading
           onError={(e) => {
             console.error("Audio Load Error:", e);
             setErrorMsg(t.error);
             setIsPlaying(false);
+            setIsLoadingStream(false);
           }}
         />
 
-        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-          <div className={`absolute inset-0 bg-[size:40px_40px] opacity-30
-            ${theme === 'dark'
-              ? 'bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)]'
-              : 'bg-[linear-gradient(to_right,#00000008_1px,transparent_1px),linear-gradient(to_bottom,#00000008_1px,transparent_1px)]'}
-          `}></div>
-          <div className={`absolute top-[-20%] left-1/2 -translate-x-1/2 w-[80vw] h-[60vh] rounded-full blur-[80px] opacity-30 transform-gpu transition-colors duration-1000
-             ${activeScene ? activeScene.bgGradient : (theme === 'dark' ? 'bg-blue-900/20' : 'bg-blue-200/40')}
-          `}></div>
-        </div>
-
-        <header className="fixed top-0 left-0 w-full px-4 py-4 md:p-6 flex justify-between items-center z-40 bg-gradient-to-b from-black/5 to-transparent pointer-events-none">
-          <div className="flex items-center gap-2 md:gap-3 cursor-pointer group pointer-events-auto" onClick={handleBack}>
-            <div className={`relative w-7 h-7 md:w-8 md:h-8 flex items-center justify-center border rounded-md transition-colors
-              ${theme === 'dark' ? 'border-white/20' : 'border-black/10'}
+        {/* --- Header --- */}
+        <header className="fixed top-0 left-0 w-full px-6 py-6 flex justify-between items-center z-50 pointer-events-none">
+          <div className="flex items-center gap-3 cursor-pointer group pointer-events-auto transition-transform hover:scale-105 active:scale-95" onClick={handleBack}>
+            <div className={`relative w-8 h-8 flex items-center justify-center border rounded-lg transition-all duration-500
+              ${theme === 'dark' ? 'border-white/20 bg-white/5' : 'border-black/10 bg-white'}
             `}>
-              <div className={`w-2 h-2 rounded-sm ${isPlaying ? 'animate-ping' : ''} ${theme === 'dark' ? 'bg-white' : 'bg-slate-800'}`}></div>
+              {/* Logo EQ Animation */}
+              <div className="flex gap-0.5 items-end h-3">
+                 <div className={`w-1 bg-current rounded-full ${isPlaying ? 'animate-[bounce_1s_infinite]' : 'h-1'}`}></div>
+                 <div className={`w-1 bg-current rounded-full ${isPlaying ? 'animate-[bounce_1.2s_infinite]' : 'h-2'}`}></div>
+                 <div className={`w-1 bg-current rounded-full ${isPlaying ? 'animate-[bounce_0.8s_infinite]' : 'h-1.5'}`}></div>
+              </div>
             </div>
-            <span className="font-mono font-bold tracking-[0.2em] text-xs md:text-sm opacity-80 uppercase">
+            <span className="font-mono font-bold tracking-[0.2em] text-xs opacity-80 uppercase group-hover:opacity-100 transition-opacity">
               {t.app_title}
             </span>
           </div>
-          <div className="flex items-center gap-2 md:gap-4 pointer-events-auto">
+
+          <div className="flex items-center gap-3 pointer-events-auto">
             {activeScene && (
-              <div className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-md transition-colors
+              <div className={`hidden md:flex items-center gap-3 px-4 py-2 rounded-full border backdrop-blur-md transition-colors animate-fade-in
                 ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white/60 border-black/5'}
               `}>
-                <Volume2 size={16} className="opacity-50" />
+                <Volume2 size={14} className="opacity-50" />
                 <input
                   type="range" min="0" max="1" step="0.01" value={volume}
                   onChange={(e) => setVolume(parseFloat(e.target.value))}
@@ -466,66 +446,83 @@ export default function ZenFlowApp() {
                 />
               </div>
             )}
-            <button
-              onClick={toggleLang}
-              className="p-2 rounded-full border active:scale-95 transition-transform bg-white/10 border-white/10 flex items-center justify-center w-9 h-9 font-mono text-xs font-bold"
-              title="Switch Language"
-            >
-              {lang.toUpperCase()}
-            </button>
-            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-full border active:scale-95 transition-transform bg-white/10 border-white/10"><Sun size={18} /></button>
-            <button onClick={() => setIsScreensaver(true)} className="p-2 rounded-full border active:scale-95 transition-transform bg-white/10 border-white/10"><Monitor size={18} /></button>
+            <button onClick={toggleLang} className="w-10 h-10 rounded-full border border-current/10 bg-current/5 flex items-center justify-center text-[10px] font-mono font-bold hover:bg-current/10 transition-all">{lang.toUpperCase()}</button>
+            <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="w-10 h-10 rounded-full border border-current/10 bg-current/5 flex items-center justify-center hover:bg-current/10 transition-all"><Sun size={16} /></button>
+            <button onClick={() => setIsScreensaver(true)} className="w-10 h-10 rounded-full border border-current/10 bg-current/5 flex items-center justify-center hover:bg-current/10 transition-all"><Monitor size={16} /></button>
           </div>
         </header>
 
+        {/* --- Screensaver --- */}
         {isScreensaver && (
-           <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black text-white animate-fade-in touch-none" onClick={() => setIsScreensaver(false)}>
-             <div className="absolute inset-0 bg-black/40 z-0"></div>
-             <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] rounded-full blur-[100px] opacity-20 animate-pulse-slow transform-gpu ${activeScene ? activeScene.accent.replace('bg-', 'bg-') : 'bg-blue-500'}`}></div>
-             <div className="z-10 text-center space-y-4 select-none">
+           <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black text-white animate-fade-in cursor-none" onClick={() => setIsScreensaver(false)}>
+             <NoiseOverlay />
+             <div className="absolute inset-0 bg-gradient-to-br from-black via-slate-950 to-black z-0"></div>
+             {/* 极简呼吸灯 */}
+             <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40vw] h-[40vw] rounded-full blur-[150px] opacity-20 animate-pulse-slow
+               ${activeScene ? activeScene.accent.replace('bg-', 'bg-') : 'bg-blue-500'}`}></div>
+
+             <div className="z-10 text-center space-y-8 select-none mix-blend-screen">
                <LiveClock />
-               <p className="text-sm md:text-3xl font-light opacity-50 tracking-[0.5em] uppercase">
-                 {activeSceneTranslation ? activeSceneTranslation.title : t.system_idle}
-               </p>
-               <p className="text-xs opacity-30 mt-12 animate-pulse">{t.tap_wake}</p>
+               <div className="space-y-2">
+                 <p className="text-2xl md:text-4xl font-light tracking-[0.3em] uppercase opacity-80">
+                   {activeSceneTranslation ? activeSceneTranslation.title : t.system_idle}
+                 </p>
+                 <p className="text-sm font-mono opacity-40 uppercase tracking-widest">{t.tap_wake}</p>
+               </div>
              </div>
            </div>
         )}
 
+        {/* --- Main Content --- */}
         <main className="relative container mx-auto px-4 pt-24 pb-12 md:px-6 min-h-screen flex flex-col justify-center items-center z-10">
           {!activeScene && (
             <div className="w-full max-w-6xl animate-fade-in-up">
-              <div className="text-center mb-10 md:mb-16 space-y-3">
-                 <h1 className="text-4xl md:text-7xl font-bold tracking-tighter opacity-90">{t.select_mode}</h1>
-                 <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-mono tracking-widest uppercase
+              <div className="text-center mb-16 space-y-6">
+                 {/* Title Animation */}
+                 <h1 className="text-5xl md:text-8xl font-bold tracking-tighter opacity-90 bg-clip-text text-transparent bg-gradient-to-b from-current to-current/50 animate-text-shimmer bg-[length:200%_100%]">
+                   {t.select_mode}
+                 </h1>
+                 <div className={`inline-flex items-center gap-3 px-4 py-1.5 rounded-full border text-[10px] font-mono tracking-widest uppercase backdrop-blur-md
                   ${theme === 'dark' ? 'border-white/10 bg-white/5 text-white/50' : 'border-black/10 bg-black/5 text-slate-500'}
                 `}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]"></span>
                   {t.ready_focus}
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {SCENES_CONFIG.map((scene) => (
                   <button
                     key={scene.id}
                     onClick={() => handleSceneSelect(scene)}
-                    className={`group relative h-48 md:h-80 rounded-2xl border transition-all duration-300 active:scale-[0.98]
-                      ${theme === 'dark' ? 'bg-[#0f172a] border-white/10' : 'bg-white border-black/5 shadow-sm'}
+                    className={`group relative h-64 md:h-80 rounded-[2rem] border transition-all duration-500 active:scale-[0.98] overflow-hidden hover:shadow-2xl
+                      ${theme === 'dark'
+                        ? 'bg-white/5 border-white/5 hover:border-white/20'
+                        : 'bg-white border-black/5 hover:border-black/10 shadow-sm'}
                     `}
                   >
-                    <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${scene.bgGradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-                    <div className="absolute inset-0 flex flex-col justify-between p-5 md:p-6 z-10">
+                    {/* Hover Glow */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${scene.bgGradient} opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
+
+                    {/* Icon Background */}
+                    <div className={`absolute -bottom-4 -right-4 opacity-[0.03] group-hover:opacity-10 transition-all duration-700 transform rotate-12 scale-[4] group-hover:scale-[4.5] ${scene.color}`}>
+                      {scene.icon}
+                    </div>
+
+                    <div className="absolute inset-0 flex flex-col justify-between p-6 md:p-8 z-10">
                       <div className="flex justify-between items-start">
-                        <div className={`p-2 md:p-3 rounded-xl border transition-colors ${theme === 'dark' ? 'bg-white/5 border-white/5 text-white/80' : 'bg-white border-black/5 text-slate-600'} group-hover:bg-white/20 group-hover:text-white`}>
+                        <div className={`p-4 rounded-2xl border backdrop-blur-sm transition-all duration-300
+                          ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white/80' : 'bg-white/80 border-black/5 text-slate-600'}
+                          group-hover:scale-110 group-hover:shadow-lg
+                        `}>
                           {scene.icon}
                         </div>
-                        <div className="text-[10px] font-mono opacity-40 font-bold tracking-wider">{scene.freq}</div>
+                        <div className="text-[10px] font-mono opacity-40 font-bold tracking-wider border border-current/20 px-2 py-1 rounded-full">{scene.freq}</div>
                       </div>
-                      <div className="space-y-1 text-left">
-                        <p className={`font-mono text-[9px] md:text-[10px] uppercase tracking-widest opacity-60 group-hover:text-white ${scene.color} dark:text-opacity-100`}>
+                      <div className="space-y-2 text-left">
+                        <p className={`font-mono text-[10px] uppercase tracking-widest opacity-60 group-hover:translate-x-1 transition-transform duration-300 ${scene.color} dark:text-opacity-100`}>
                           {t.scenes[scene.id as keyof typeof t.scenes].subtitle}
                         </p>
-                        <h3 className="text-lg md:text-xl font-bold tracking-tight group-hover:text-white transition-colors">
+                        <h3 className="text-2xl font-bold tracking-tight group-hover:text-current transition-colors">
                           {t.scenes[scene.id as keyof typeof t.scenes].title}
                         </h3>
                       </div>
@@ -537,35 +534,53 @@ export default function ZenFlowApp() {
           )}
 
           {activeScene && activeSceneTranslation && (
-            <div className="flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-24 w-full max-w-6xl animate-fade-in relative pb-10">
+            <div className="flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-32 w-full max-w-6xl animate-fade-in relative pb-10">
               <div className="flex flex-col items-center justify-center flex-1 order-1">
-                <div className="relative mb-8 md:mb-12 scale-90 md:scale-100">
-                  <div className={`absolute inset-[-40px] rounded-full border border-dashed opacity-20 transform-gpu ${isPlaying ? 'animate-spin-slow' : ''} ${theme === 'dark' ? 'border-white' : 'border-black'}`}></div>
-                  <div className={`absolute inset-0 rounded-full blur-[60px] opacity-20 transition-opacity duration-1000 transform-gpu ${activeScene.accent} ${isPlaying ? 'opacity-40' : 'opacity-20'}`}></div>
+                <div className="relative mb-12 md:mb-16 scale-100 md:scale-110">
+                  {/* Complex Engine Animation */}
+                  <div className={`absolute inset-[-60px] rounded-full border border-dashed opacity-10 animate-[spin_20s_linear_infinite] ${theme === 'dark' ? 'border-white' : 'border-black'}`}></div>
+                  <div className={`absolute inset-[-30px] rounded-full border border-dotted opacity-20 animate-[spin_15s_linear_infinite_reverse] ${theme === 'dark' ? 'border-white' : 'border-black'}`}></div>
+
+                  {/* Dynamic Glow */}
+                  <div className={`absolute inset-0 rounded-full blur-[80px] transition-all duration-1000
+                    ${activeScene.accent}
+                    ${isPlaying ? 'opacity-40 scale-150' : 'opacity-10 scale-100'}
+                  `}></div>
 
                   <button
                     onClick={() => setIsPlaying(!isPlaying)}
-                    className={`relative w-40 h-40 md:w-56 md:h-56 rounded-full border backdrop-blur-xl flex items-center justify-center shadow-2xl transition-transform active:scale-95 group z-10
-                      ${theme === 'dark' ? 'bg-slate-900/80 border-white/10' : 'bg-white/80 border-white/50'}
+                    className={`relative w-48 h-48 md:w-64 md:h-64 rounded-full border backdrop-blur-2xl flex items-center justify-center shadow-2xl transition-all duration-500 active:scale-95 group z-10
+                      ${theme === 'dark' ? 'bg-black/40 border-white/10 hover:border-white/30' : 'bg-white/40 border-white/50 hover:bg-white/60'}
                     `}
                   >
-                    {isPlaying ? (
-                      <Pause size={48} className={`fill-current ${activeScene.color} opacity-90`} />
-                    ) : (
-                      <Play size={48} className={`ml-2 fill-current ${activeScene.color} opacity-90`} />
+                     {/* Loading Spinner */}
+                    {isLoadingStream && isPlaying && (
+                       <div className="absolute inset-0 flex items-center justify-center z-20">
+                          <Loader2 size={48} className="animate-spin opacity-50" />
+                       </div>
                     )}
+
+                    <div className={`transition-all duration-500 ${isLoadingStream && isPlaying ? 'opacity-0 scale-50' : 'opacity-100 scale-100'}`}>
+                       {isPlaying ? (
+                          <Pause size={64} className={`fill-current ${activeScene.color} opacity-90 drop-shadow-lg`} />
+                        ) : (
+                          <Play size={64} className={`ml-3 fill-current ${activeScene.color} opacity-90 drop-shadow-lg`} />
+                        )}
+                    </div>
                   </button>
 
                   {activeScene.playlist.length > 1 && (
-                    <button onClick={(e) => { e.stopPropagation(); playRandomTrack(activeScene); }} className="absolute -right-4 md:-right-8 top-1/2 -translate-y-1/2 p-3 rounded-full border shadow-lg active:scale-90 transition-transform z-20 bg-white/10 border-white/10">
-                      <SkipForward size={20} />
+                    <button onClick={(e) => { e.stopPropagation(); playRandomTrack(activeScene); }} className="absolute -right-8 top-1/2 -translate-y-1/2 p-4 rounded-full border shadow-lg active:scale-90 transition-transform z-20 bg-white/5 border-white/10 hover:bg-white/20 backdrop-blur-md">
+                      <SkipForward size={24} />
                     </button>
                   )}
                 </div>
 
-                <div className="text-center space-y-2">
-                  <h2 className="text-3xl md:text-5xl font-bold tracking-tight">{activeSceneTranslation.title}</h2>
-                  <div className="inline-flex items-center gap-2 opacity-60">
+                <div className="text-center space-y-4">
+                  <h2 className="text-4xl md:text-6xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-current to-current/50">
+                    {activeSceneTranslation.title}
+                  </h2>
+                  <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-current/10 bg-current/5 backdrop-blur-md">
                      {errorMsg ? (
                        <>
                          <AlertCircle size={14} className="text-red-500" />
@@ -574,8 +589,8 @@ export default function ZenFlowApp() {
                      ) : (
                        <>
                          <Signal size={14} className={isPlaying ? 'animate-pulse text-green-500' : ''} />
-                         <span className="text-xs font-mono uppercase tracking-widest">
-                           {isPlaying ? t.playing : t.paused}
+                         <span className="text-xs font-mono uppercase tracking-widest opacity-70">
+                           {isLoadingStream && isPlaying ? "CONNECTING..." : (isPlaying ? t.playing : t.paused)}
                          </span>
                        </>
                      )}
@@ -587,6 +602,29 @@ export default function ZenFlowApp() {
           )}
         </main>
       </div>
+      <style jsx global>{`
+        @keyframes aurora-1 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(20px, 20px) scale(1.1); }
+        }
+        @keyframes aurora-2 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(-20px, -10px) scale(0.9); }
+        }
+        .animate-aurora-1 { animation: aurora-1 10s ease-in-out infinite alternate; }
+        .animate-aurora-2 { animation: aurora-2 12s ease-in-out infinite alternate; }
+
+        @keyframes shine {
+          100% { transform: translateX(100%); }
+        }
+        .animate-shine { animation: shine 1.5s; }
+
+        @keyframes text-shimmer {
+          0% { background-position: 100% 0; }
+          100% { background-position: -100% 0; }
+        }
+        .animate-text-shimmer { animation: text-shimmer 3s linear infinite; }
+      `}</style>
     </div>
   );
 }
