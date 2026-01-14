@@ -6,21 +6,21 @@ import {
   Radio, Sun, Monitor, Timer, Signal
 } from "lucide-react";
 
-// --- 1. 静态数据 ---
+// --- 1. 静态数据配置 ---
 const SCENES = [
   {
     id: "focus",
-    title: "ANIME LO-FI", // 你指定的房间
-    subtitle: "Zeno.fm Live",
-    freq: "LIVE RADIO",
+    title: "LO-FI RADIO",
+    subtitle: "Live Stream",
+    freq: "LIVE",
     icon: <Zap size={24} />,
     color: "text-purple-500 dark:text-purple-400",
     bgGradient: "from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40",
     accent: "bg-purple-500 dark:bg-purple-400",
-    // 关键点：使用 embedUrl 而不是 playlist
-    // Zeno 官方播放器地址
-    embedUrl: "https://zeno.fm/player/anime-lo-fi-room",
-    playlist: []
+    // 修复：这是一个支持 HTTPS 的永久 Lofi 直播流地址，不再使用 iframe
+    playlist: [
+      "https://stream.zeno.fm/0r0xa854rp8uv" // Lofi Girl Mirror Stream
+    ]
   },
   {
     id: "relax",
@@ -31,9 +31,11 @@ const SCENES = [
     color: "text-teal-600 dark:text-emerald-400",
     bgGradient: "from-teal-100 to-emerald-100 dark:from-emerald-900/40 dark:to-teal-900/40",
     accent: "bg-teal-500 dark:bg-emerald-400",
+    // 修复：使用 SoundHelix 永久测试链，确保一定有声音。
+    // 你后续只需把这里的 mp3 换成你 R2 里的链接即可。
     playlist: [
-      "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3",
-      "https://cdn.pixabay.com/download/audio/2022/11/02/audio_c1f6e1f6e8.mp3"
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
     ]
   },
   {
@@ -46,8 +48,8 @@ const SCENES = [
     bgGradient: "from-indigo-100 to-purple-100 dark:from-violet-900/40 dark:to-indigo-900/40",
     accent: "bg-indigo-500 dark:bg-violet-400",
     playlist: [
-      "https://cdn.pixabay.com/download/audio/2021/08/09/audio_88447e769f.mp3",
-      "https://cdn.pixabay.com/download/audio/2023/02/28/audio_550d815533.mp3"
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3"
     ]
   },
   {
@@ -60,22 +62,27 @@ const SCENES = [
     bgGradient: "from-orange-100 to-amber-100 dark:from-amber-900/40 dark:to-orange-900/40",
     accent: "bg-orange-500 dark:bg-amber-400",
     playlist: [
-      "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3",
-      "https://cdn.pixabay.com/download/audio/2022/10/25/audio_1650b32c25.mp3"
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3"
     ]
   },
 ];
 
-// --- 2. 独立子组件 ---
+// --- 2. 独立子组件 (保持性能优化) ---
 const LiveClock = memo(() => {
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState<string>("");
   useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
+    // 解决 Hydration Mismatch 问题：只在客户端渲染时间
+    setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    const timer = setInterval(() => {
+      setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    }, 1000);
     return () => clearInterval(timer);
   }, []);
+
   return (
-    <h1 className="text-[18vw] md:text-[15vw] leading-none font-bold font-mono tracking-tighter opacity-90 select-none will-change-contents">
-      {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+    <h1 className="text-[18vw] md:text-[15vw] leading-none font-bold font-mono tracking-tighter opacity-90 select-none will-change-contents min-h-[1em]">
+      {time}
     </h1>
   );
 });
@@ -92,6 +99,7 @@ const PomodoroTimer = ({ accentColor, theme }: { accentColor: string, theme: str
       interval = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
     } else if (timeLeft === 0) {
       setIsTimerRunning(false);
+      // 可以在这里加一个简单的提示音
     }
     return () => clearInterval(interval);
   }, [isTimerRunning, timeLeft]);
@@ -116,34 +124,19 @@ const PomodoroTimer = ({ accentColor, theme }: { accentColor: string, theme: str
          <Timer size={16} />
          <span className="text-xs font-mono font-bold uppercase tracking-widest">Focus Timer</span>
       </div>
-
       <div className="text-center mb-8">
         <div className="text-5xl md:text-6xl font-mono font-bold tabular-nums tracking-tighter mb-4 will-change-contents">
           {formatTime(timeLeft)}
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => resetTimer('work')}
-            className={`py-2 text-xs font-bold rounded-lg transition-colors border ${timerMode === 'work' ? (theme === 'dark' ? 'bg-white text-black border-white' : 'bg-black text-white border-black') : 'border-transparent opacity-50 hover:opacity-100'}`}
-          >
-            WORK (25)
-          </button>
-          <button
-            onClick={() => resetTimer('break')}
-            className={`py-2 text-xs font-bold rounded-lg transition-colors border ${timerMode === 'break' ? (theme === 'dark' ? 'bg-white text-black border-white' : 'bg-black text-white border-black') : 'border-transparent opacity-50 hover:opacity-100'}`}
-          >
-            BREAK (5)
-          </button>
+          <button onClick={() => resetTimer('work')} className={`py-2 text-xs font-bold rounded-lg transition-colors border ${timerMode === 'work' ? (theme === 'dark' ? 'bg-white text-black border-white' : 'bg-black text-white border-black') : 'border-transparent opacity-50 hover:opacity-100'}`}>WORK (25)</button>
+          <button onClick={() => resetTimer('break')} className={`py-2 text-xs font-bold rounded-lg transition-colors border ${timerMode === 'break' ? (theme === 'dark' ? 'bg-white text-black border-white' : 'bg-black text-white border-black') : 'border-transparent opacity-50 hover:opacity-100'}`}>BREAK (5)</button>
         </div>
       </div>
-
       <button
         onClick={() => setIsTimerRunning(!isTimerRunning)}
         className={`w-full py-4 rounded-xl font-bold tracking-widest transition-transform active:scale-95 shadow-lg
-          ${isTimerRunning
-            ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200 text-slate-600')
-            : accentColor + ' text-white'
-          }
+          ${isTimerRunning ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200 text-slate-600') : accentColor + ' text-white'}
         `}
       >
         {isTimerRunning ? "PAUSE" : "START SESSION"}
@@ -162,22 +155,25 @@ export default function ZenFlowApp() {
   const [isScreensaver, setIsScreensaver] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // 播放逻辑：支持 MP3 歌单 和 Iframe 直播
+  // --- 播放逻辑：统一处理所有音频 ---
   const playRandomTrack = (scene: typeof SCENES[0]) => {
-    // 如果是 Embed 模式（直播流），逻辑由 iframe 控制，不需要设置 audio src
-    if (scene.embedUrl) {
+    const list = scene.playlist;
+
+    // 如果列表是空的，防止报错
+    if (!list || list.length === 0) return;
+
+    // 逻辑：如果只有一首（如直播流），直接播；如果是多首，随机切
+    if (list.length === 1) {
+      // 如果当前已经在播这首直播流，就不重置了，避免卡顿
+      if (currentSongUrl !== list[0]) {
+        setCurrentSongUrl(list[0]);
+      }
       setIsPlaying(true);
       return;
     }
 
-    // 正常的 MP3 模式
-    const list = scene.playlist;
-    if (list.length === 1) {
-      setCurrentSongUrl(list[0]);
-      setIsPlaying(true);
-      return;
-    }
     let nextUrl;
+    // 简单的防止连续重复算法
     do {
       const randomIndex = Math.floor(Math.random() * list.length);
       nextUrl = list[randomIndex];
@@ -187,21 +183,39 @@ export default function ZenFlowApp() {
     setIsPlaying(true);
   };
 
+  // --- 核心播放副作用 ---
   useEffect(() => {
-    // 仅控制 MP3 模式的音量和播放
-    if (audioRef.current && !activeScene?.embedUrl) {
-      audioRef.current.volume = volume;
-      if (isPlaying) {
-        audioRef.current.play().catch(e => console.log("Audio Error:", e));
-      } else {
-        audioRef.current.pause();
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.volume = volume;
+
+    if (isPlaying) {
+      // 使用 Promise 处理播放，防止 "The play() request was interrupted" 报错
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.error("Auto-play prevented or stream failed:", error);
+          // 可以在这里加一个 toast 提示用户点击
+        });
       }
+    } else {
+      audio.pause();
     }
-  }, [isPlaying, volume, currentSongUrl, activeScene]);
+  }, [isPlaying, volume, currentSongUrl]);
 
   const handleSceneSelect = (scene: typeof SCENES[0]) => {
-    setActiveScene(scene);
-    playRandomTrack(scene);
+    // 切换场景时，先重置播放状态，确保 audio 标签感知到变化
+    if (activeScene?.id !== scene.id) {
+      setIsPlaying(false);
+      setTimeout(() => {
+        setActiveScene(scene);
+        playRandomTrack(scene);
+      }, 50); // 给一点微小的延迟确保 React 状态更新
+    } else {
+      // 如果点的是同一个场景，直接开始/暂停
+      if (!isPlaying) setIsPlaying(true);
+    }
   };
 
   const handleBack = () => {
@@ -216,21 +230,20 @@ export default function ZenFlowApp() {
         ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-gray-50 text-slate-800'}
       `}>
 
-        {/* 普通 MP3 播放器 */}
-        <audio ref={audioRef} key={currentSongUrl} src={currentSongUrl} onEnded={() => activeScene && playRandomTrack(activeScene)} />
-
-        {/* --- 核心魔法：Zeno 隐藏式 Iframe 播放器 --- */}
-        {/* 只有当场景有 embedUrl 且 正在播放时，才挂载这个 iframe */}
-        {activeScene?.embedUrl && isPlaying && (
-           <div className="fixed bottom-0 left-0 w-1 h-1 opacity-0 pointer-events-none overflow-hidden">
-             {/* 使用 iframe 加载 Zeno 播放器页面，?autoplay=1 尝试自动播放 */}
-             <iframe
-               src={`${activeScene.embedUrl}?autoplay=1`}
-               allow="autoplay"
-               title="Zeno Radio"
-             ></iframe>
-           </div>
-        )}
+        {/*
+            核心音频组件
+            crossOrigin="anonymous" 有助于处理跨域流
+            preload="auto" 提高响应速度
+        */}
+        <audio
+          ref={audioRef}
+          key={currentSongUrl} // 关键：URL变了强制重载 audio 标签
+          src={currentSongUrl}
+          crossOrigin="anonymous"
+          preload="auto"
+          onEnded={() => activeScene && playRandomTrack(activeScene)}
+          onError={(e) => console.error("Audio Load Error:", e)}
+        />
 
         {/* --- 背景层 --- */}
         <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
@@ -239,7 +252,7 @@ export default function ZenFlowApp() {
               ? 'bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)]'
               : 'bg-[linear-gradient(to_right,#00000008_1px,transparent_1px),linear-gradient(to_bottom,#00000008_1px,transparent_1px)]'}
           `}></div>
-          <div className={`absolute top-[-20%] left-1/2 -translate-x-1/2 w-[80vw] h-[60vh] rounded-full blur-[80px] opacity-30 transform-gpu
+          <div className={`absolute top-[-20%] left-1/2 -translate-x-1/2 w-[80vw] h-[60vh] rounded-full blur-[80px] opacity-30 transform-gpu transition-colors duration-1000
              ${activeScene ? activeScene.bgGradient : (theme === 'dark' ? 'bg-blue-900/20' : 'bg-blue-200/40')}
           `}></div>
         </div>
@@ -258,7 +271,7 @@ export default function ZenFlowApp() {
           </div>
 
           <div className="flex items-center gap-2 md:gap-4 pointer-events-auto">
-            {/* 音量条：如果是直播模式，提示音量不可用 */}
+            {/* 音量控制 */}
             {activeScene && (
               <div className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-md transition-colors
                 ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white/60 border-black/5'}
@@ -267,16 +280,35 @@ export default function ZenFlowApp() {
                 <input
                   type="range" min="0" max="1" step="0.01" value={volume}
                   onChange={(e) => setVolume(parseFloat(e.target.value))}
-                  disabled={!!activeScene.embedUrl} // 直播模式禁用
-                  className={`w-20 h-1 rounded-lg appearance-none cursor-pointer bg-current opacity-30 hover:opacity-100 ${activeScene.embedUrl ? 'cursor-not-allowed opacity-10' : ''}`}
+                  className="w-20 h-1 rounded-lg appearance-none cursor-pointer bg-current opacity-30 hover:opacity-100"
                 />
               </div>
             )}
-
             <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 rounded-full border active:scale-95 transition-transform bg-white/10 border-white/10"><Sun size={18} /></button>
             <button onClick={() => setIsScreensaver(true)} className="p-2 rounded-full border active:scale-95 transition-transform bg-white/10 border-white/10"><Monitor size={18} /></button>
           </div>
         </header>
+
+        {/* --- Screensaver --- */}
+        {isScreensaver && (
+           <div
+             className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black text-white animate-fade-in touch-none"
+             onClick={() => setIsScreensaver(false)}
+           >
+             <div className="absolute inset-0 bg-black/40 z-0"></div>
+             <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] rounded-full blur-[100px] opacity-20 animate-pulse-slow transform-gpu
+               ${activeScene ? activeScene.accent.replace('bg-', 'bg-') : 'bg-blue-500'}
+             `}></div>
+
+             <div className="z-10 text-center space-y-4 select-none">
+               <LiveClock />
+               <p className="text-sm md:text-3xl font-light opacity-50 tracking-[0.5em] uppercase">
+                 {activeScene ? activeScene.title : "SYSTEM IDLE"}
+               </p>
+               <p className="text-xs opacity-30 mt-12 animate-pulse">Tap to wake up</p>
+             </div>
+           </div>
+        )}
 
         {/* --- Main Content --- */}
         <main className="relative container mx-auto px-4 pt-24 pb-12 md:px-6 min-h-screen flex flex-col justify-center items-center z-10">
@@ -335,8 +367,8 @@ export default function ZenFlowApp() {
                     )}
                   </button>
 
-                  {/* 如果是 Embed 模式，隐藏切歌按钮，显示 Live 标志 */}
-                  {!activeScene.embedUrl && (
+                  {/* 切歌按钮：如果是直播流(只有一个URL)，就不显示切歌按钮 */}
+                  {activeScene.playlist.length > 1 && (
                     <button onClick={(e) => { e.stopPropagation(); playRandomTrack(activeScene); }} className="absolute -right-4 md:-right-8 top-1/2 -translate-y-1/2 p-3 rounded-full border shadow-lg active:scale-90 transition-transform z-20 bg-white/10 border-white/10">
                       <SkipForward size={20} />
                     </button>
@@ -346,9 +378,9 @@ export default function ZenFlowApp() {
                 <div className="text-center space-y-2">
                   <h2 className="text-3xl md:text-5xl font-bold tracking-tight">{activeScene.title}</h2>
                   <div className="inline-flex items-center gap-2 opacity-60">
-                     {activeScene.embedUrl ? <Signal size={14} className={isPlaying ? 'animate-pulse text-red-500' : ''} /> : <Radio size={14} className={isPlaying ? 'animate-pulse' : ''} />}
+                     {activeScene.playlist.length === 1 ? <Signal size={14} className={isPlaying ? 'animate-pulse text-red-500' : ''} /> : <Radio size={14} className={isPlaying ? 'animate-pulse' : ''} />}
                      <span className="text-xs font-mono uppercase tracking-widest">
-                       {activeScene.embedUrl ? (isPlaying ? "LIVE BROADCAST" : "OFFLINE") : (isPlaying ? "ACTIVE SESSION" : "PAUSED")}
+                       {activeScene.playlist.length === 1 ? (isPlaying ? "LIVE SIGNAL" : "OFFLINE") : (isPlaying ? "PLAYING" : "PAUSED")}
                      </span>
                   </div>
                 </div>
