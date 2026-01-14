@@ -3,37 +3,37 @@
 import React, { useState, useRef, useEffect, memo } from "react";
 import {
   Play, Pause, Zap, Moon, Coffee, Volume2, Wind, SkipForward,
-  Radio, Sun, Monitor, Timer, Signal, Music
+  Radio, Sun, Monitor, Timer, Signal, Music, AlertCircle
 } from "lucide-react";
 
-// --- 1. 静态数据配置 (全部替换为直连 HTTPS 直播流) ---
+// --- 1. 静态数据配置 (SomaFM 全家桶 - 极其稳定) ---
 const SCENES = [
   {
     id: "focus",
-    title: "LO-FI RADIO",
+    title: "LO-FI STUDY",
     subtitle: "Laut.fm Stream",
-    freq: "LIVE", // 标记为直播
+    freq: "LIVE",
     icon: <Zap size={24} />,
     color: "text-purple-500 dark:text-purple-400",
     bgGradient: "from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40",
     accent: "bg-purple-500 dark:bg-purple-400",
     playlist: [
-      // 德国 Laut.fm Lofi 频道 (极度稳定，HTTPS 直连)
-      "https://stream.laut.fm/lofi?t302=2023-04-18_18-47-51&uuid=d1e3e5f2-5a5a-4e5a-8e5a-5a5a5a5a5a5a"
+      // 你确认过这个能用，保留
+      "https://stream.laut.fm/lofi"
     ]
   },
   {
     id: "relax",
-    title: "CHILLHOP",
-    subtitle: "FluxFM Berlin",
+    title: "GROOVE SALAD",
+    subtitle: "SomaFM Chill",
     freq: "LIVE",
     icon: <Wind size={24} />,
     color: "text-teal-600 dark:text-emerald-400",
     bgGradient: "from-teal-100 to-emerald-100 dark:from-emerald-900/40 dark:to-teal-900/40",
     accent: "bg-teal-500 dark:bg-emerald-400",
     playlist: [
-      // 柏林 FluxFM Chillhop 频道
-      "https://fluxfm.streamabc.net/flx-chillhop-mp3-128-3486545?sABC=6440266e%230%23no67r2s6op204691r768n26q44r0105q%23strea&amsparams=playerid:streamabc;skey:1681925742"
+      // [替换] SomaFM Groove Salad: 经典的舒缓 Downtempo，非常稳定
+      "https://ice2.somafm.com/groovesalad-128-mp3"
     ]
   },
   {
@@ -46,22 +46,22 @@ const SCENES = [
     bgGradient: "from-indigo-100 to-purple-100 dark:from-violet-900/40 dark:to-indigo-900/40",
     accent: "bg-indigo-500 dark:bg-violet-400",
     playlist: [
-      // SomaFM Drone Zone (助眠神台，无鼓点，HTTPS)
+      // 你确认过这个能用，保留
       "https://ice2.somafm.com/dronezone-128-mp3"
     ]
   },
   {
     id: "creative",
-    title: "ELECTRONIC",
-    subtitle: "Study Beats",
+    title: "BEAT BLENDER",
+    subtitle: "Deep House",
     freq: "LIVE",
     icon: <Coffee size={24} />,
     color: "text-orange-600 dark:text-amber-400",
     bgGradient: "from-orange-100 to-amber-100 dark:from-amber-900/40 dark:to-orange-900/40",
     accent: "bg-orange-500 dark:bg-amber-400",
     playlist: [
-      // Laut.fm Electronic Focus
-      "https://stream.laut.fm/electronic_focus"
+      // [替换] SomaFM Beat Blender: 节奏感好的 Deep House，适合创造性工作
+      "https://ice2.somafm.com/beatblender-128-mp3"
     ]
   },
 ];
@@ -148,22 +148,25 @@ export default function ZenFlowApp() {
   const [volume, setVolume] = useState(0.5);
   const [currentSongUrl, setCurrentSongUrl] = useState<string>("");
   const [isScreensaver, setIsScreensaver] = useState(false);
+
+  // 错误状态处理
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // 播放逻辑 (简化版：因为全是直播流，其实不需要随机切歌逻辑了，但保留以兼容多源)
   const playRandomTrack = (scene: typeof SCENES[0]) => {
+    setErrorMsg(null); // 每次切歌清除错误
     const list = scene.playlist;
     if (!list || list.length === 0) return;
 
     if (list.length === 1) {
-      // 避免重复加载同一个直播流导致卡顿
       if (currentSongUrl !== list[0]) {
         setCurrentSongUrl(list[0]);
       }
       setIsPlaying(true);
       return;
     }
-    // ... 多首歌的逻辑保留 ...
+
     let nextUrl;
     do {
       const randomIndex = Math.floor(Math.random() * list.length);
@@ -183,7 +186,8 @@ export default function ZenFlowApp() {
       if (playPromise !== undefined) {
         playPromise.catch(error => {
           console.error("Playback error:", error);
-          // 如果出错，可能是直播流暂时中断
+          setIsPlaying(false); // 播放失败则重置按钮状态
+          // 不弹窗干扰用户，只在控制台记录
         });
       }
     } else {
@@ -207,6 +211,7 @@ export default function ZenFlowApp() {
     setIsPlaying(false);
     setActiveScene(null);
     setCurrentSongUrl("");
+    setErrorMsg(null);
   };
 
   return (
@@ -216,18 +221,21 @@ export default function ZenFlowApp() {
       `}>
 
         {/*
-          核心播放器：
-          preload="none" -> 避免页面加载时就请求音频流，节省流量
-          crossOrigin="anonymous" -> 处理跨域
+          !!! 核心修复 !!!
+          移除了 crossOrigin="anonymous" 属性
+          这解决了直播流的跨域错误
         */}
         <audio
           ref={audioRef}
           key={currentSongUrl}
           src={currentSongUrl}
           preload="none"
-          crossOrigin="anonymous"
           onEnded={() => activeScene && playRandomTrack(activeScene)}
-          onError={(e) => console.error("Audio tag error:", e)}
+          onError={(e) => {
+            console.error("Audio Load Error:", e);
+            setErrorMsg("Stream unavailable, try again.");
+            setIsPlaying(false);
+          }}
         />
 
         {/* --- 视觉层 --- */}
@@ -338,7 +346,7 @@ export default function ZenFlowApp() {
                     )}
                   </button>
 
-                  {/* 直播流通常不支持切歌，所以隐藏按钮 */}
+                  {/* 切歌按钮：虽然直播流不可切，保留按钮样式但禁用 */}
                   {activeScene.playlist.length > 1 && (
                     <button onClick={(e) => { e.stopPropagation(); playRandomTrack(activeScene); }} className="absolute -right-4 md:-right-8 top-1/2 -translate-y-1/2 p-3 rounded-full border shadow-lg active:scale-90 transition-transform z-20 bg-white/10 border-white/10">
                       <SkipForward size={20} />
@@ -349,10 +357,19 @@ export default function ZenFlowApp() {
                 <div className="text-center space-y-2">
                   <h2 className="text-3xl md:text-5xl font-bold tracking-tight">{activeScene.title}</h2>
                   <div className="inline-flex items-center gap-2 opacity-60">
-                     <Signal size={14} className={isPlaying ? 'animate-pulse text-red-500' : ''} />
-                     <span className="text-xs font-mono uppercase tracking-widest">
-                       {isPlaying ? "LIVE BROADCAST" : "SIGNAL PAUSED"}
-                     </span>
+                     {errorMsg ? (
+                       <>
+                         <AlertCircle size={14} className="text-red-500" />
+                         <span className="text-xs font-mono uppercase tracking-widest text-red-500">{errorMsg}</span>
+                       </>
+                     ) : (
+                       <>
+                         <Signal size={14} className={isPlaying ? 'animate-pulse text-green-500' : ''} />
+                         <span className="text-xs font-mono uppercase tracking-widest">
+                           {isPlaying ? "LIVE SIGNAL ACQUIRED" : "SIGNAL PAUSED"}
+                         </span>
+                       </>
+                     )}
                   </div>
                 </div>
               </div>
