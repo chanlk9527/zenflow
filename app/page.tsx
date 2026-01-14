@@ -116,7 +116,7 @@ const SCENES_CONFIG = [
     accentColor: "bg-amber-600",
     bgGradient: "from-amber-500/10 to-orange-500/10",
     // Laut.fm/kaffeehaus: 专门播放咖啡馆风格的爵士/Lounge
-    playlist: ["https://ice2.somafm.com/illstreet-128-mp3"]
+    playlist: ["https://listen.181fm.com/181-classicalguitar_128k.mp3"]
   },
   {
     id: "sleep",
