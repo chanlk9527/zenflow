@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, memo } from "react";
 import {
   Play, Pause, Zap, Moon, Coffee, Volume2, Wind, SkipForward,
-  Sun, Monitor, Timer, Signal, AlertCircle, Bell, Loader2
+  Sun, Monitor, Timer, Signal, AlertCircle, Bell, Loader2, Sparkles
 } from "lucide-react";
 
 // --- 1. 多语言字典配置 ---
@@ -30,6 +30,7 @@ const TRANSLATIONS = {
     scenes: {
       focus: { title: "Lo-Fi Study", subtitle: "Laut.fm Stream" },
       relax: { title: "Groove Salad", subtitle: "SomaFM Chill" },
+      cafe: { title: "Coffee Jazz", subtitle: "Bistro Vibes" }, // 新增
       sleep: { title: "Drone Zone", subtitle: "SomaFM Ambient" },
       creative: { title: "Beat Blender", subtitle: "Deep House" }
     }
@@ -54,6 +55,7 @@ const TRANSLATIONS = {
     scenes: {
       focus: { title: "深度专注", subtitle: "Lo-Fi 学习频道" },
       relax: { title: "舒缓律动", subtitle: "Groove Salad 经典" },
+      cafe: { title: "午后咖啡", subtitle: "爵士 & 小酒馆" }, // 新增
       sleep: { title: "深层睡眠", subtitle: "Drone 氛围音乐" },
       creative: { title: "灵感激发", subtitle: "Deep House 电子" }
     }
@@ -78,21 +80,20 @@ const TRANSLATIONS = {
     scenes: {
       focus: { title: "集中学習", subtitle: "Lo-Fi ストリーム" },
       relax: { title: "リラックス", subtitle: "チルアウト・ビート" },
+      cafe: { title: "カフェ・ジャズ", subtitle: "ビストロの雰囲気" }, // 新增
       sleep: { title: "睡眠導入", subtitle: "ドローン・アンビエント" },
       creative: { title: "創造性", subtitle: "ディープ・ハウス" }
     }
   }
 };
 
-// --- 2. 静态数据配置 ---
-// 优化：简化渐变色，减少渲染压力
+// --- 2. 静态数据配置 (新增 Cafe) ---
 const SCENES_CONFIG = [
   {
     id: "focus",
     freq: "LIVE",
     icon: <Zap size={24} />,
     color: "text-purple-500",
-    // 使用纯净的 CSS 变量或简单类名
     accentColor: "bg-purple-500",
     bgGradient: "from-purple-500/10 to-blue-500/10",
     playlist: ["https://stream.laut.fm/lofi"]
@@ -107,6 +108,17 @@ const SCENES_CONFIG = [
     playlist: ["https://ice2.somafm.com/groovesalad-128-mp3"]
   },
   {
+    // --- 新增场景：Cafe ---
+    id: "cafe",
+    freq: "LIVE",
+    icon: <Coffee size={24} />, // 咖啡图标归位
+    color: "text-amber-600",
+    accentColor: "bg-amber-600",
+    bgGradient: "from-amber-500/10 to-orange-500/10",
+    // Laut.fm/kaffeehaus: 专门播放咖啡馆风格的爵士/Lounge
+    playlist: ["https://ice2.somafm.com/illstreet-128-mp3"]
+  },
+  {
     id: "sleep",
     freq: "LIVE",
     icon: <Moon size={24} />,
@@ -118,27 +130,21 @@ const SCENES_CONFIG = [
   {
     id: "creative",
     freq: "LIVE",
-    icon: <Coffee size={24} />,
-    color: "text-orange-500",
-    accentColor: "bg-orange-500",
-    bgGradient: "from-orange-500/10 to-amber-500/10",
+    icon: <Sparkles size={24} />, // 灵感改成星星图标
+    color: "text-pink-500",
+    accentColor: "bg-pink-500",
+    bgGradient: "from-pink-500/10 to-rose-500/10",
     playlist: ["https://ice2.somafm.com/beatblender-128-mp3"]
   },
 ];
 
 // --- 3. 组件优化 ---
-
-// 极光背景 (简化版) - 移除复杂的 mix-blend-mode，仅使用透明度
 const AuroraBackground = memo(({ activeScene, theme }: { activeScene: any, theme: string }) => {
   return (
     <div className="fixed inset-0 z-0 pointer-events-none transition-colors duration-1000 ease-in-out">
-      {/* 基础底色 */}
-      <div className={`absolute inset-0 ${theme === 'dark' ? 'bg-[#000000]' : 'bg-[#F2F2F7]'}`}></div>
-
-      {/* 静态光斑 (性能友好) */}
+      <div className={`absolute inset-0 ${theme === 'dark' ? 'bg-[#050505]' : 'bg-[#F2F2F7]'}`}></div>
       <div className={`absolute top-[-20%] left-[-10%] w-[80vw] h-[80vw] rounded-full blur-[80px] opacity-40 transform-gpu transition-all duration-1000
          ${activeScene ? activeScene.bgGradient.split(' ')[0] : 'bg-blue-500/5'}`}></div>
-
       <div className={`absolute bottom-[-20%] right-[-10%] w-[80vw] h-[80vw] rounded-full blur-[100px] opacity-30 transform-gpu transition-all duration-1000
          ${activeScene ? activeScene.bgGradient.split(' ')[2] : 'bg-purple-500/5'}`}></div>
     </div>
@@ -163,7 +169,6 @@ const LiveClock = memo(() => {
 });
 LiveClock.displayName = "LiveClock";
 
-// --- 4. 番茄钟 (iOS Glass Style) ---
 const PomodoroTimer = ({ accentColor, theme, lang }: { accentColor: string, theme: string, lang: LangKey }) => {
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
@@ -219,15 +224,12 @@ const PomodoroTimer = ({ accentColor, theme, lang }: { accentColor: string, them
          <span className="text-xs font-bold uppercase tracking-wider">{t.title}</span>
          {timeLeft === 0 && <Bell size={16} className="text-yellow-500 animate-bounce" />}
       </div>
-
       <div className="text-center mb-8">
         <div className={`text-6xl font-medium tabular-nums tracking-tight mb-8 transition-colors
            ${timeLeft === 0 ? 'text-green-500' : ''}
         `}>
           {timeLeft === 0 ? "00:00" : formatTime(timeLeft)}
         </div>
-
-        {/* 极简滑块 */}
         <div className="mb-8 px-1 group relative h-6 flex items-center">
           <input
             type="range" min="1" max="90" step="1"
@@ -235,11 +237,9 @@ const PomodoroTimer = ({ accentColor, theme, lang }: { accentColor: string, them
             onChange={handleSliderChange}
             className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-current opacity-10 hover:opacity-30 transition-opacity z-10"
           />
-          {/* 进度条 */}
           <div className={`absolute h-1.5 rounded-full pointer-events-none transition-all duration-300 opacity-80 ${accentColor}`}
                style={{width: `${(sliderValue / 90) * 100}%`}}></div>
         </div>
-
         <div className="grid grid-cols-2 gap-3">
           {[25, 5].map(min => (
              <button key={min} onClick={() => setPreset(min)}
@@ -253,7 +253,6 @@ const PomodoroTimer = ({ accentColor, theme, lang }: { accentColor: string, them
           ))}
         </div>
       </div>
-
       <button
         onClick={() => timeLeft === 0 ? setPreset(sliderValue) : setIsTimerRunning(!isTimerRunning)}
         className={`w-full py-4 rounded-2xl font-bold text-sm transition-all active:scale-95 shadow-lg
@@ -269,7 +268,7 @@ const PomodoroTimer = ({ accentColor, theme, lang }: { accentColor: string, them
   );
 };
 
-// --- 5. 主程序 ---
+// --- 4. 主程序 ---
 export default function ZenFlowApp() {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [lang, setLang] = useState<LangKey>('en');
@@ -284,7 +283,6 @@ export default function ZenFlowApp() {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Persistence
   useEffect(() => {
     const savedTheme = localStorage.getItem('zenflow_theme') as 'light' | 'dark';
     const savedLang = localStorage.getItem('zenflow_lang') as LangKey;
@@ -400,13 +398,12 @@ export default function ZenFlowApp() {
           }}
         />
 
-        {/* --- Header --- */}
+        {/* Header */}
         <header className="fixed top-0 left-0 w-full px-6 py-6 flex justify-between items-center z-50">
           <div className="flex items-center gap-3 cursor-pointer group active:opacity-70 transition-opacity" onClick={handleBack}>
             <div className={`relative w-10 h-10 flex items-center justify-center rounded-xl backdrop-blur-md shadow-sm border
               ${theme === 'dark' ? 'bg-white/10 border-white/10' : 'bg-white/60 border-white/40'}
             `}>
-               {/* 简化的 Logo 动画 */}
                <div className="flex gap-[3px] items-end h-3">
                  <div className={`w-[3px] bg-current rounded-full ${isPlaying ? 'animate-[bounce_1s_infinite]' : 'h-1.5 opacity-40'}`}></div>
                  <div className={`w-[3px] bg-current rounded-full ${isPlaying ? 'animate-[bounce_1.2s_infinite]' : 'h-3 opacity-40'}`}></div>
@@ -419,7 +416,6 @@ export default function ZenFlowApp() {
           </div>
 
           <div className="flex items-center gap-3">
-             {/* 极简音量控制：只在桌面显示 */}
             {activeScene && (
               <div className={`hidden md:flex items-center gap-3 px-4 py-2 rounded-full border backdrop-blur-md transition-colors
                 ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white/40 border-white/40'}
@@ -433,7 +429,6 @@ export default function ZenFlowApp() {
               </div>
             )}
 
-            {/* iOS 风格的圆形按钮 */}
             {[
               { icon: <span className="text-[10px] font-bold">{lang.toUpperCase()}</span>, action: toggleLang },
               { icon: <Sun size={18} />, action: () => setTheme(theme === 'dark' ? 'light' : 'dark') },
@@ -449,14 +444,12 @@ export default function ZenFlowApp() {
           </div>
         </header>
 
-        {/* --- Screensaver --- */}
+        {/* Screensaver */}
         {isScreensaver && (
            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black text-white animate-fade-in cursor-none" onClick={() => setIsScreensaver(false)}>
              <div className="absolute inset-0 bg-black z-0"></div>
-             {/* 纯色光晕，无复杂混合 */}
              <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50vw] h-[50vw] rounded-full blur-[120px] opacity-30 animate-pulse
                ${activeScene ? activeScene.accentColor.replace('bg-', 'bg-') : 'bg-blue-500'}`}></div>
-
              <div className="z-10 text-center space-y-8 select-none">
                <LiveClock />
                <div className="space-y-2">
@@ -469,12 +462,11 @@ export default function ZenFlowApp() {
            </div>
         )}
 
-        {/* --- Main Content --- */}
+        {/* Main Content */}
         <main className="relative container mx-auto px-4 pt-28 pb-12 md:px-6 min-h-screen flex flex-col justify-center items-center z-10">
           {!activeScene && (
             <div className="w-full max-w-6xl animate-fade-in-up">
               <div className="text-center mb-16 space-y-6">
-                 {/* 纯文本标题，移除 bg-clip-text 以解决兼容性问题 */}
                  <h1 className="text-5xl md:text-8xl font-bold tracking-tighter opacity-90">
                    {t.select_mode}
                  </h1>
@@ -486,21 +478,20 @@ export default function ZenFlowApp() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              {/* 布局修改：使用 Flex 居中自动换行，适配 5 个卡片 */}
+              <div className="flex flex-wrap justify-center gap-4 md:gap-6">
                 {SCENES_CONFIG.map((scene) => (
                   <button
                     key={scene.id}
                     onClick={() => handleSceneSelect(scene)}
-                    className={`group relative h-64 md:h-80 rounded-[2.5rem] border transition-all duration-300 active:scale-[0.98] overflow-hidden hover:-translate-y-2 hover:shadow-2xl
-                      backdrop-blur-2xl saturate-150
+                    className={`group relative h-64 w-full sm:w-[calc(50%-1rem)] lg:w-[calc(25%-1.2rem)] xl:w-64 rounded-[2.5rem] border transition-all duration-300 active:scale-[0.98] overflow-hidden hover:-translate-y-2 hover:shadow-2xl
+                      backdrop-blur-2xl saturate-150 flex-shrink-0
                       ${theme === 'dark'
                         ? 'bg-white/5 border-white/10 hover:bg-white/10 shadow-black/20'
                         : 'bg-white/40 border-white/60 hover:bg-white/60 shadow-slate-200/50'}
                     `}
                   >
-                    {/* 简单的悬停色块 */}
                     <div className={`absolute inset-0 bg-gradient-to-br ${scene.bgGradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-
                     <div className="absolute inset-0 flex flex-col justify-between p-8 z-10">
                       <div className="flex justify-between items-start">
                         <div className={`p-4 rounded-2xl border backdrop-blur-sm transition-all
@@ -527,9 +518,7 @@ export default function ZenFlowApp() {
           {activeScene && activeSceneTranslation && (
             <div className="flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-32 w-full max-w-6xl animate-fade-in relative pb-10">
               <div className="flex flex-col items-center justify-center flex-1 order-1">
-                {/* 播放器容器 */}
                 <div className="relative mb-12 md:mb-16">
-                  {/* 静态的玻璃质感光晕 (替代动态混合模式) */}
                   <div className={`absolute inset-[-40px] rounded-full blur-[60px] opacity-20 transition-all duration-1000 ${activeScene.accentColor} ${isPlaying ? 'scale-110 opacity-30' : 'scale-100 opacity-10'}`}></div>
 
                   <button
