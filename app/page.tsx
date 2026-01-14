@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, memo } from "react";
 import {
   Play, Pause, Zap, Moon, Coffee, Volume2, Wind, SkipForward,
-  Radio, Sun, Monitor, Timer, Signal, AlertCircle
+  Radio, Sun, Monitor, Timer, Signal, AlertCircle, Bell, Settings
 } from "lucide-react";
 
 // --- 1. 多语言字典配置 ---
@@ -21,10 +21,12 @@ const TRANSLATIONS = {
     error: "Stream unavailable, retry...",
     timer: {
       title: "Focus Timer",
-      work: "WORK",
-      break: "BREAK",
+      work: "Preset: Work (25m)",
+      break: "Preset: Break (5m)",
+      custom: "Custom Duration",
       start: "START SESSION",
-      pause: "PAUSE"
+      pause: "PAUSE",
+      ended: "Session Complete"
     },
     scenes: {
       focus: { title: "LO-FI STUDY", subtitle: "Laut.fm Stream" },
@@ -44,10 +46,12 @@ const TRANSLATIONS = {
     error: "流媒体连接失败，请重试...",
     timer: {
       title: "番茄专注钟",
-      work: "工作 (25)",
-      break: "休息 (5)",
+      work: "预设：工作 (25分钟)",
+      break: "预设：休息 (5分钟)",
+      custom: "自定义时长 (拖动调节)",
       start: "开始专注",
-      pause: "暂停计时"
+      pause: "暂停计时",
+      ended: "专注结束"
     },
     scenes: {
       focus: { title: "深度专注", subtitle: "Lo-Fi 学习频道" },
@@ -67,10 +71,12 @@ const TRANSLATIONS = {
     error: "接続エラー、再試行してください...",
     timer: {
       title: "ポモドーロ",
-      work: "集中 (25)",
-      break: "休憩 (5)",
+      work: "集中 (25分)",
+      break: "休憩 (5分)",
+      custom: "カスタム設定",
       start: "セッション開始",
-      pause: "一時停止"
+      pause: "一時停止",
+      ended: "終了しました"
     },
     scenes: {
       focus: { title: "集中学習", subtitle: "Lo-Fi ストリーム" },
@@ -139,26 +145,56 @@ const LiveClock = memo(() => {
 });
 LiveClock.displayName = "LiveClock";
 
+// --- 4. 升级版番茄钟组件 ---
 const PomodoroTimer = ({ accentColor, theme, lang }: { accentColor: string, theme: string, lang: LangKey }) => {
-  const [timerMode, setTimerMode] = useState<'work' | 'break'>('work');
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [sliderValue, setSliderValue] = useState(25); // 分钟数
   const t = TRANSLATIONS[lang].timer;
+
+  // 提示音 Ref
+  const alarmRef = useRef<HTMLAudioElement | null>(null);
+
+  // 初始化提示音 (使用 Pixabay 的清脆风铃声)
+  useEffect(() => {
+    alarmRef.current = new Audio("https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3");
+  }, []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isTimerRunning && timeLeft > 0) {
-      interval = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
-    } else if (timeLeft === 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+        // 同步更新滑块位置（可选，为了让滑块倒着走，但通常滑块表示设定值，倒计时显示剩余值，这里不让滑块动，体验更好）
+      }, 1000);
+    } else if (timeLeft === 0 && isTimerRunning) {
+      // 倒计时结束
       setIsTimerRunning(false);
+      // 播放提示音
+      if (alarmRef.current) {
+        alarmRef.current.play().catch(e => console.log("Alarm play failed", e));
+      }
+      // 可以加个系统通知（浏览器支持的话）
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(t.ended);
+      } else if ("Notification" in window && Notification.permission !== "denied") {
+        Notification.requestPermission();
+      }
     }
     return () => clearInterval(interval);
-  }, [isTimerRunning, timeLeft]);
+  }, [isTimerRunning, timeLeft, t.ended]);
 
-  const resetTimer = (mode: 'work' | 'break') => {
-    setTimerMode(mode);
+  const setPreset = (minutes: number) => {
     setIsTimerRunning(false);
-    setTimeLeft(mode === 'work' ? 25 * 60 : 5 * 60);
+    setSliderValue(minutes);
+    setTimeLeft(minutes * 60);
+  };
+
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const minutes = parseInt(e.target.value);
+    setIsTimerRunning(false);
+    setSliderValue(minutes);
+    setTimeLeft(minutes * 60);
   };
 
   const formatTime = (seconds: number) => {
@@ -171,32 +207,109 @@ const PomodoroTimer = ({ accentColor, theme, lang }: { accentColor: string, them
     <div className={`relative w-full max-w-sm lg:w-80 p-6 rounded-3xl border backdrop-blur-md transition-colors order-2
        ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white/60 border-black/5 shadow-lg'}
     `}>
-      <div className="flex items-center gap-2 mb-6 opacity-50">
-         <Timer size={16} />
-         <span className="text-xs font-mono font-bold uppercase tracking-widest">{t.title}</span>
+      <div className="flex items-center justify-between mb-6 opacity-50">
+         <div className="flex items-center gap-2">
+            <Timer size={16} />
+            <span className="text-xs font-mono font-bold uppercase tracking-widest">{t.title}</span>
+         </div>
+         {/* 如果时间到了，显示铃铛图标 */}
+         {timeLeft === 0 && <Bell size={16} className="text-yellow-500 animate-bounce" />}
       </div>
-      <div className="text-center mb-8">
-        <div className="text-5xl md:text-6xl font-mono font-bold tabular-nums tracking-tighter mb-4 will-change-contents">
-          {formatTime(timeLeft)}
+
+      <div className="text-center mb-6">
+        {/* 大号时间显示 */}
+        <div className={`text-6xl font-mono font-bold tabular-nums tracking-tighter mb-6 will-change-contents transition-colors
+           ${timeLeft === 0 ? 'text-green-500 animate-pulse' : ''}
+        `}>
+          {timeLeft === 0 ? "00:00" : formatTime(timeLeft)}
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => resetTimer('work')} className={`py-2 text-xs font-bold rounded-lg transition-colors border ${timerMode === 'work' ? (theme === 'dark' ? 'bg-white text-black border-white' : 'bg-black text-white border-black') : 'border-transparent opacity-50 hover:opacity-100'}`}>{t.work}</button>
-          <button onClick={() => resetTimer('break')} className={`py-2 text-xs font-bold rounded-lg transition-colors border ${timerMode === 'break' ? (theme === 'dark' ? 'bg-white text-black border-white' : 'bg-black text-white border-black') : 'border-transparent opacity-50 hover:opacity-100'}`}>{t.break}</button>
+
+        {/* --- 核心升级：波轮滑块 (Range Slider) --- */}
+        <div className="mb-6 px-2 group">
+          <div className="flex justify-between text-[10px] font-mono opacity-30 mb-2 uppercase">
+             <span>1 min</span>
+             <span>{t.custom}</span>
+             <span>90 min</span>
+          </div>
+          <input
+            type="range"
+            min="1"
+            max="90"
+            step="1"
+            value={sliderValue}
+            onChange={handleSliderChange}
+            className={`w-full h-2 rounded-lg appearance-none cursor-pointer transition-all
+              ${theme === 'dark' ? 'bg-white/10' : 'bg-black/10'}
+            `}
+            style={{
+               // 动态生成滑块背景，让它看起来像被填充满了
+               backgroundSize: `${(sliderValue / 90) * 100}% 100%`,
+            }}
+          />
+          {/* 滑块下方的当前选择提示 */}
+          <div className="mt-2 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+            {sliderValue} Minutes
+          </div>
+        </div>
+
+        {/* 预设按钮 */}
+        <div className="grid grid-cols-2 gap-2 mb-6">
+          <button onClick={() => setPreset(25)} className={`py-2 text-[10px] font-bold rounded-lg transition-colors border ${sliderValue === 25 ? (theme === 'dark' ? 'bg-white text-black border-white' : 'bg-black text-white border-black') : 'border-transparent opacity-50 hover:opacity-100'}`}>
+            25m (Focus)
+          </button>
+          <button onClick={() => setPreset(5)} className={`py-2 text-[10px] font-bold rounded-lg transition-colors border ${sliderValue === 5 ? (theme === 'dark' ? 'bg-white text-black border-white' : 'bg-black text-white border-black') : 'border-transparent opacity-50 hover:opacity-100'}`}>
+            5m (Rest)
+          </button>
         </div>
       </div>
+
       <button
-        onClick={() => setIsTimerRunning(!isTimerRunning)}
+        onClick={() => {
+           if (timeLeft === 0) setPreset(sliderValue); // 如果结束了，点击开始重置
+           else setIsTimerRunning(!isTimerRunning);
+        }}
         className={`w-full py-4 rounded-xl font-bold tracking-widest transition-transform active:scale-95 shadow-lg
-          ${isTimerRunning ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200 text-slate-600') : accentColor + ' text-white'}
+          ${isTimerRunning
+            ? (theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-200 text-slate-600')
+            : (timeLeft === 0 ? 'bg-green-500 text-white' : accentColor + ' text-white')
+          }
         `}
       >
-        {isTimerRunning ? t.pause : t.start}
+        {timeLeft === 0 ? "RESET" : (isTimerRunning ? t.pause : t.start)}
       </button>
+
+      {/* CSS for Custom Range Slider Styling */}
+      <style jsx>{`
+        input[type=range]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          height: 16px;
+          width: 6px;
+          border-radius: 2px;
+          background: ${theme === 'dark' ? '#fff' : '#000'};
+          cursor: pointer;
+          margin-top: -3px; /* You need to specify a margin in Chrome, but in Firefox and IE it is automatic */
+          box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+        input[type=range]::-moz-range-thumb {
+          height: 16px;
+          width: 6px;
+          border-radius: 2px;
+          background: ${theme === 'dark' ? '#fff' : '#000'};
+          cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+          width: 100%;
+          height: 8px;
+          cursor: pointer;
+          background: transparent;
+          border-radius: 4px;
+        }
+      `}</style>
     </div>
   );
 };
 
-// --- 4. 主程序 ---
+// --- 5. 主程序 ---
 export default function ZenFlowApp() {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [lang, setLang] = useState<LangKey>('en');
@@ -206,13 +319,12 @@ export default function ZenFlowApp() {
   const [currentSongUrl, setCurrentSongUrl] = useState<string>("");
   const [isScreensaver, setIsScreensaver] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false); // 防止 hydration 错误
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // --- NEW: 记忆功能 (Persistence) ---
+  // Persistence
   useEffect(() => {
-    // 页面加载时读取本地存储
     const savedTheme = localStorage.getItem('zenflow_theme') as 'light' | 'dark';
     const savedLang = localStorage.getItem('zenflow_lang') as LangKey;
     const savedVolume = localStorage.getItem('zenflow_volume');
@@ -220,11 +332,9 @@ export default function ZenFlowApp() {
     if (savedTheme) setTheme(savedTheme);
     if (savedLang) setLang(savedLang);
     if (savedVolume) setVolume(parseFloat(savedVolume));
-
-    setIsInitialized(true); // 标记初始化完成，显示 UI
+    setIsInitialized(true);
   }, []);
 
-  // 监听变化并保存
   useEffect(() => {
     if (isInitialized) {
       localStorage.setItem('zenflow_theme', theme);
@@ -232,8 +342,6 @@ export default function ZenFlowApp() {
       localStorage.setItem('zenflow_volume', volume.toString());
     }
   }, [theme, lang, volume, isInitialized]);
-
-  // --- 结束记忆功能 ---
 
   const t = TRANSLATIONS[lang];
   const activeScene = activeSceneId ? SCENES_CONFIG.find(s => s.id === activeSceneId) : null;
@@ -302,7 +410,6 @@ export default function ZenFlowApp() {
     setErrorMsg(null);
   };
 
-  // 如果还没读取完本地配置，先渲染一个空壳，防止闪烁
   if (!isInitialized) return <div className="min-h-screen bg-slate-950"></div>;
 
   return (
@@ -324,7 +431,6 @@ export default function ZenFlowApp() {
           }}
         />
 
-        {/* --- 视觉层 --- */}
         <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
           <div className={`absolute inset-0 bg-[size:40px_40px] opacity-30
             ${theme === 'dark'
@@ -336,7 +442,6 @@ export default function ZenFlowApp() {
           `}></div>
         </div>
 
-        {/* --- Header --- */}
         <header className="fixed top-0 left-0 w-full px-4 py-4 md:p-6 flex justify-between items-center z-40 bg-gradient-to-b from-black/5 to-transparent pointer-events-none">
           <div className="flex items-center gap-2 md:gap-3 cursor-pointer group pointer-events-auto" onClick={handleBack}>
             <div className={`relative w-7 h-7 md:w-8 md:h-8 flex items-center justify-center border rounded-md transition-colors
@@ -373,7 +478,6 @@ export default function ZenFlowApp() {
           </div>
         </header>
 
-        {/* --- Screensaver --- */}
         {isScreensaver && (
            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black text-white animate-fade-in touch-none" onClick={() => setIsScreensaver(false)}>
              <div className="absolute inset-0 bg-black/40 z-0"></div>
@@ -388,7 +492,6 @@ export default function ZenFlowApp() {
            </div>
         )}
 
-        {/* --- Main Content --- */}
         <main className="relative container mx-auto px-4 pt-24 pb-12 md:px-6 min-h-screen flex flex-col justify-center items-center z-10">
           {!activeScene && (
             <div className="w-full max-w-6xl animate-fade-in-up">
@@ -419,7 +522,6 @@ export default function ZenFlowApp() {
                         <div className="text-[10px] font-mono opacity-40 font-bold tracking-wider">{scene.freq}</div>
                       </div>
                       <div className="space-y-1 text-left">
-                        {/* 动态获取翻译 */}
                         <p className={`font-mono text-[9px] md:text-[10px] uppercase tracking-widest opacity-60 group-hover:text-white ${scene.color} dark:text-opacity-100`}>
                           {t.scenes[scene.id as keyof typeof t.scenes].subtitle}
                         </p>
@@ -485,15 +587,6 @@ export default function ZenFlowApp() {
           )}
         </main>
       </div>
-      <style jsx global>{`
-        .transform-gpu { transform: translate3d(0, 0, 0); }
-        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .animate-spin-slow { animation: spin-slow 12s linear infinite; }
-        @keyframes fade-in-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards; }
-        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-        .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
-      `}</style>
     </div>
   );
 }
