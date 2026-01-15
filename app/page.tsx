@@ -224,12 +224,10 @@ const SoundKnob = ({ volume, onChange, icon: Icon, label, activeColor, theme }: 
   const barRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Fallback color in case activeScene is not yet loaded or passed
   const fillColor = activeColor || (theme === 'dark' ? 'bg-white' : 'bg-black');
 
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
-    // Directly capture element for immediate feedback
     if (barRef.current) {
        barRef.current.setPointerCapture(e.pointerId);
     }
@@ -378,18 +376,16 @@ export default function ZenFlowRedesignV2() {
 
   // Refs
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const rainRef = useRef<HTMLAudioElement | null>(null);
-  const fireRef = useRef<HTMLAudioElement | null>(null);
-  const birdsRef = useRef<HTMLAudioElement | null>(null);
+  // --- FIXED: Use a map for stable ambient refs ---
+  const ambientRefs = useRef<{[key: string]: HTMLAudioElement}>({});
 
   const t = TRANSLATIONS[lang];
   const activeScene = SCENES_CONFIG.find(s => s.id === activeSceneId);
 
-  // --- 修复3: 自动时间主题判定 ---
+  // Auto Theme
   useEffect(() => {
     const checkTime = () => {
       const hour = new Date().getHours();
-      // 21:00 到 06:00 之间判定为黑夜
       if (hour >= 21 || hour < 6) {
         setTheme('dark');
       } else {
@@ -406,35 +402,39 @@ export default function ZenFlowRedesignV2() {
     return t.greeting.e;
   };
 
+  // Main Audio Effect
   useEffect(() => {
     if (!audioRef.current) return;
     audioRef.current.volume = mainVolume;
     if (isMainPlaying && currentStreamUrl) {
-      audioRef.current.play().then(() => setIsLoadingStream(false)).catch(() => setIsMainPlaying(false));
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+         playPromise
+           .then(() => setIsLoadingStream(false))
+           .catch(() => setIsMainPlaying(false));
+      }
     } else {
       audioRef.current.pause();
     }
   }, [isMainPlaying, currentStreamUrl, mainVolume]);
 
-  // --- FIXED: Ambient Sounds Playback Logic ---
-  // Improved reliability for playing mixer sounds independently
+  // --- FIXED: Ambient Sounds Playback Logic & Independence ---
   useEffect(() => {
-    const refs = { rain: rainRef.current, fire: fireRef.current, birds: birdsRef.current };
-
     Object.entries(ambientVolumes).forEach(([key, vol]) => {
-      const el = refs[key as keyof typeof refs];
+      const el = ambientRefs.current[key];
       if (el) {
-        // Always set volume first
+        // 1. Independent Volume Control
         el.volume = vol;
+        el.muted = false; // Force unmute just in case
 
-        // Handle Play/Pause based on volume presence
+        // 2. Play/Pause Logic with Promise handling
         if (vol > 0) {
            if (el.paused) {
              const playPromise = el.play();
              if (playPromise !== undefined) {
                  playPromise.catch(error => {
-                     // Catch play interruption errors (common when dragging sliders rapidly)
-                     // Console log suppressed to keep console clean for user
+                     // Auto-play policy or rapid switching might cause aborts, safe to ignore
+                     // console.log("Audio play interrupted:", error);
                  });
              }
            }
@@ -445,7 +445,7 @@ export default function ZenFlowRedesignV2() {
         }
       }
     });
-  }, [ambientVolumes]);
+  }, [ambientVolumes]); // Only depends on ambientVolumes, totally independent of main audio
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -515,16 +515,22 @@ export default function ZenFlowRedesignV2() {
       <AuroraBackground activeScene={activeScene} theme={theme} />
 
       {/* Main Stream Audio */}
-      <audio ref={audioRef} src={currentStreamUrl} onPlaying={() => setIsLoadingStream(false)} onWaiting={() => setIsLoadingStream(true)} />
+      <audio
+        ref={audioRef}
+        src={currentStreamUrl}
+        onPlaying={() => setIsLoadingStream(false)}
+        onWaiting={() => setIsLoadingStream(true)}
+        crossOrigin="anonymous"
+      />
 
-      {/* Ambient Sounds - Fixed for Independent Playback */}
+      {/* Ambient Sounds - Independent Player */}
       {AMBIENT_SOUNDS.map(s => (
         <audio
             key={s.id}
-            ref={s.id === 'rain' ? rainRef : s.id === 'fire' ? fireRef : birdsRef}
+            ref={(el) => { if (el) ambientRefs.current[s.id] = el; }}
             src={s.url}
             loop
-            playsInline // Crucial for mobile independence
+            playsInline
             preload="auto"
             crossOrigin="anonymous"
         />
@@ -557,7 +563,6 @@ export default function ZenFlowRedesignV2() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[160px] md:auto-rows-[180px] pb-24">
             <button onClick={() => enterScene(SCENES_CONFIG[0])}
-              // --- 修复2: 增强黑夜模式卡片对比度 ---
               className={`md:col-span-2 row-span-2 rounded-[2rem] p-8 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.01] active:scale-[0.99] relative overflow-hidden group
                 ${theme === 'dark'
                    ? 'bg-[#121212] border border-white/5 hover:bg-white/5 hover:border-white/10 hover:shadow-xl hover:shadow-white/5'
@@ -577,7 +582,6 @@ export default function ZenFlowRedesignV2() {
 
             {SCENES_CONFIG.slice(1).map((scene, i) => (
               <button key={scene.id} onClick={() => enterScene(scene)}
-                // --- 修复2: 增强黑夜模式卡片对比度 ---
                 className={`rounded-[2rem] p-6 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group
                   ${theme === 'dark'
                      ? 'bg-[#121212] border border-white/5 hover:bg-white/5 hover:border-white/10 hover:shadow-lg hover:shadow-white/5'
@@ -599,17 +603,11 @@ export default function ZenFlowRedesignV2() {
       </main>
 
       {/* --- VIEW: PLAYER --- */}
-      {/*
-         --- 修复1: 移动端滚动修复 ---
-         将 fixed 布局改为 overflow-y-auto 的容器，内部使用 min-h-[100dvh] 撑开高度
-      */}
       <main className={`fixed inset-0 z-20 w-full overflow-y-auto overflow-x-hidden transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]
          ${viewMode === 'player' ? 'translate-x-0 opacity-100' : 'translate-x-[20%] opacity-0 pointer-events-none'}`}>
 
-        {/* 背景 Mesh：fixed 定位，保证滚动时背景不动 */}
         <AppleStyleMesh isPlaying={isMainPlaying} activeSceneId={activeSceneId} theme={theme} />
 
-        {/* 内部容器：使用 flex 和 min-h-[100dvh] 确保最小占满屏幕，但允许延伸 */}
         <div className="flex flex-col min-h-[100dvh] w-full relative">
 
             {/* Top Controls */}
