@@ -161,14 +161,14 @@ const AuroraBackground = memo(({ activeScene, theme }: { activeScene: any, theme
 ));
 AuroraBackground.displayName = "AuroraBackground";
 
-// [UPGRADE V2.1] 修复了边界感，让光晕全屏扩散
 const AppleStyleMesh = memo(({ isPlaying, activeSceneId, theme }: { isPlaying: boolean, activeSceneId: string | null, theme: 'light' | 'dark' }) => {
   const palette = activeSceneId && ELEVATED_PALETTES[activeSceneId]
     ? ELEVATED_PALETTES[activeSceneId]
     : ELEVATED_PALETTES.focus;
 
   return (
-    <div className={`absolute inset-0 z-0 flex items-center justify-center transition-opacity duration-[2000ms] overflow-hidden pointer-events-none ${isPlaying ? 'opacity-100' : 'opacity-30'}`}>
+    // 使用 fixed 确保背景固定，不随内容滚动
+    <div className={`fixed inset-0 z-0 flex items-center justify-center transition-opacity duration-[2000ms] overflow-hidden pointer-events-none ${isPlaying ? 'opacity-100' : 'opacity-30'}`}>
        <style>{`
          @keyframes blob-bounce {
            0% { transform: translate(0, 0) scale(1); }
@@ -376,6 +376,20 @@ export default function ZenFlowRedesignV2() {
   const t = TRANSLATIONS[lang];
   const activeScene = SCENES_CONFIG.find(s => s.id === activeSceneId);
 
+  // --- 修复3: 自动时间主题判定 ---
+  useEffect(() => {
+    const checkTime = () => {
+      const hour = new Date().getHours();
+      // 21:00 到 06:00 之间判定为黑夜
+      if (hour >= 21 || hour < 6) {
+        setTheme('dark');
+      } else {
+        setTheme('light');
+      }
+    };
+    checkTime();
+  }, []); // 仅在组件挂载时执行一次
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return t.greeting.m;
@@ -502,10 +516,13 @@ export default function ZenFlowRedesignV2() {
             <p className="opacity-50 text-sm md:text-base font-medium">{t.tagline}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[160px] md:auto-rows-[180px] pb-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[160px] md:auto-rows-[180px] pb-24">
             <button onClick={() => enterScene(SCENES_CONFIG[0])}
+              // --- 修复2: 增强黑夜模式卡片对比度 ---
               className={`md:col-span-2 row-span-2 rounded-[2rem] p-8 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.01] active:scale-[0.99] relative overflow-hidden group
-                ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-white/60 border border-white/40 shadow-sm'}`}>
+                ${theme === 'dark'
+                   ? 'bg-[#121212] border border-white/5 hover:bg-white/5 hover:border-white/10 hover:shadow-xl hover:shadow-white/5'
+                   : 'bg-white/60 border border-white/40 shadow-sm'}`}>
                <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-700 ${SCENES_CONFIG[0].gradient}`} />
                <div className="relative z-10">
                  <div className="inline-flex p-3 rounded-xl bg-white/10 backdrop-blur-md mb-4 text-purple-300">
@@ -521,8 +538,11 @@ export default function ZenFlowRedesignV2() {
 
             {SCENES_CONFIG.slice(1).map((scene, i) => (
               <button key={scene.id} onClick={() => enterScene(scene)}
+                // --- 修复2: 增强黑夜模式卡片对比度 ---
                 className={`rounded-[2rem] p-6 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group
-                  ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-white/60 border border-white/40 shadow-sm'}
+                  ${theme === 'dark'
+                     ? 'bg-[#121212] border border-white/5 hover:bg-white/5 hover:border-white/10 hover:shadow-lg hover:shadow-white/5'
+                     : 'bg-white/60 border border-white/40 shadow-sm'}
                   ${i === 1 ? 'md:row-span-2' : ''}
                 `}>
                  <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-20 transition-opacity duration-500 ${scene.gradient}`} />
@@ -540,131 +560,140 @@ export default function ZenFlowRedesignV2() {
       </main>
 
       {/* --- VIEW: PLAYER --- */}
-      <main className={`fixed inset-0 z-20 flex flex-col w-full transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]
+      {/*
+         --- 修复1: 移动端滚动修复 ---
+         将 fixed 布局改为 overflow-y-auto 的容器，内部使用 min-h-[100dvh] 撑开高度
+         这样当屏幕较矮时，内容可以被滚动查看，而不是被截断。
+      */}
+      <main className={`fixed inset-0 z-20 w-full overflow-y-auto overflow-x-hidden transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]
          ${viewMode === 'player' ? 'translate-x-0 opacity-100' : 'translate-x-[20%] opacity-0 pointer-events-none'}`}>
 
-        {/* 背景 Mesh：全屏放置于底层 */}
+        {/* 背景 Mesh：fixed 定位，保证滚动时背景不动 */}
         <AppleStyleMesh isPlaying={isMainPlaying} activeSceneId={activeSceneId} theme={theme} />
 
-        {/* Top Controls */}
-        <div className="w-full max-w-md mx-auto px-6 pt-24 pb-4 flex justify-between items-end flex-shrink-0 relative z-30">
-          <button onClick={() => setViewMode('home')} className="p-4 -ml-4 rounded-full hover:bg-white/10 transition-colors z-50">
-            <ArrowLeft size={24} />
-          </button>
-          <div className="flex flex-col items-end text-right pointer-events-none">
-             <span className="text-xs font-bold opacity-40 uppercase tracking-widest">{isMainPlaying ? t.playing : t.paused}</span>
-             <h2 className="text-xl font-bold">{activeScene ? t.scenes[activeSceneId as keyof typeof t.scenes].title : '...'}</h2>
-          </div>
-        </div>
+        {/* 内部容器：使用 flex 和 min-h-[100dvh] 确保最小占满屏幕，但允许延伸 */}
+        <div className="flex flex-col min-h-[100dvh] w-full relative">
 
-        {/* Center Play Button Area */}
-        <div className="flex-1 flex flex-col items-center justify-center relative min-h-[300px] flex-shrink-0 z-30">
-           <div className="relative w-72 h-72 md:w-96 md:h-96 flex items-center justify-center">
-              <div className="flex items-center gap-4 relative z-20">
-                <button
-                  onClick={() => setIsMainPlaying(!isMainPlaying)}
-                  className={`w-24 h-24 rounded-full flex items-center justify-center backdrop-blur-xl border shadow-xl transition-transform active:scale-90
-                     ${theme === 'dark' ? 'bg-white/10 border-white/20' : 'bg-white/60 border-white/50'}`}>
-                  {isLoadingStream && isMainPlaying ? <Loader2 className="animate-spin" /> :
-                   isMainPlaying ? <Pause className="fill-current" /> : <Play className="fill-current ml-1" />}
-                </button>
-
-                {activeScene && activeScene.playlist.length > 1 && (
-                  <button
-                    onClick={handleNextTrack}
-                    className={`absolute -right-16 w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md border transition-transform active:scale-90
-                       ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white/40 border-white/30 hover:bg-white/60'}`}
-                  >
-                    <SkipForward size={18} className="opacity-70" />
-                  </button>
-                )}
+            {/* Top Controls */}
+            <div className="w-full max-w-md mx-auto px-6 pt-24 pb-4 flex justify-between items-end flex-shrink-0 relative z-30">
+              <button onClick={() => setViewMode('home')} className="p-4 -ml-4 rounded-full hover:bg-white/10 transition-colors z-50">
+                <ArrowLeft size={24} />
+              </button>
+              <div className="flex flex-col items-end text-right pointer-events-none">
+                 <span className="text-xs font-bold opacity-40 uppercase tracking-widest">{isMainPlaying ? t.playing : t.paused}</span>
+                 <h2 className="text-xl font-bold">{activeScene ? t.scenes[activeSceneId as keyof typeof t.scenes].title : '...'}</h2>
               </div>
-           </div>
-        </div>
+            </div>
 
-        {/* Bottom Command Deck */}
-        <div className="w-full px-6 pb-12 flex-shrink-0 relative z-30">
-          <div className={`max-w-md mx-auto rounded-[2.5rem] overflow-hidden backdrop-blur-3xl border shadow-2xl transition-all duration-500
-             ${theme === 'dark' ? 'bg-[#121212]/60 border-white/10 shadow-black/50' : 'bg-white/50 border-white/40 shadow-xl'}`}>
+            {/* Center Play Button Area - 允许 flex-grow 占据空间 */}
+            <div className="flex-1 flex flex-col items-center justify-center relative min-h-[300px] z-30 py-8">
+               <div className="relative w-64 h-64 md:w-96 md:h-96 flex items-center justify-center">
+                  <div className="flex items-center gap-4 relative z-20">
+                    <button
+                      onClick={() => setIsMainPlaying(!isMainPlaying)}
+                      className={`w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center backdrop-blur-xl border shadow-xl transition-transform active:scale-90
+                         ${theme === 'dark' ? 'bg-white/10 border-white/20' : 'bg-white/60 border-white/50'}`}>
+                      {isLoadingStream && isMainPlaying ? <Loader2 className="animate-spin" /> :
+                       isMainPlaying ? <Pause className="fill-current" /> : <Play className="fill-current ml-1" />}
+                    </button>
 
-             {/* Tab Switcher */}
-             <div className="flex p-2 gap-2">
-               <button onClick={() => setActiveTab('mixer')}
-                 className={`flex-1 py-3 rounded-3xl text-[10px] font-bold tracking-[0.2em] flex items-center justify-center gap-2 transition-all
-                   ${activeTab === 'mixer' ? (theme === 'dark' ? 'bg-white/10 shadow-inner' : 'bg-white shadow-sm') : 'opacity-40 hover:opacity-70'}`}>
-                   <SlidersHorizontal size={14} /> {t.mixer}
-               </button>
-               <button onClick={() => setActiveTab('timer')}
-                 className={`flex-1 py-3 rounded-3xl text-[10px] font-bold tracking-[0.2em] flex items-center justify-center gap-2 transition-all
-                   ${activeTab === 'timer' ? (theme === 'dark' ? 'bg-white/10 shadow-inner' : 'bg-white shadow-sm') : 'opacity-40 hover:opacity-70'}`}>
-                   <TimerIcon size={14} /> {t.timer}
-               </button>
-             </div>
-
-             <div className="h-56 px-6 pb-6 relative">
-               {/* Mixer Panel */}
-               <div className={`absolute inset-0 px-6 pb-6 flex items-center justify-between transition-all duration-500
-                  ${activeTab === 'mixer' ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 -translate-x-10 pointer-events-none'}`}>
-                  {AMBIENT_SOUNDS.map(s => (
-                    <SoundKnob key={s.id}
-                      icon={s.icon}
-                      label={s.label}
-                      volume={ambientVolumes[s.id]}
-                      onChange={(v: number) => setAmbientVolumes(p => ({...p, [s.id]: v}))}
-                      activeColor={activeScene?.bg} theme={theme}
-                    />
-                  ))}
+                    {activeScene && activeScene.playlist.length > 1 && (
+                      <button
+                        onClick={handleNextTrack}
+                        className={`absolute -right-16 w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md border transition-transform active:scale-90
+                           ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white/40 border-white/30 hover:bg-white/60'}`}
+                      >
+                        <SkipForward size={18} className="opacity-70" />
+                      </button>
+                    )}
+                  </div>
                </div>
+            </div>
 
-               {/* Timer Panel */}
-               <div className={`absolute inset-0 px-6 pb-6 flex flex-col items-center justify-center gap-4 transition-all duration-500
-                  ${activeTab === 'timer' ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-10 pointer-events-none'}`}>
+            {/* Bottom Command Deck - 保持 flex-shrink-0 但有足够 padding 适配移动端 */}
+            <div className="w-full px-6 pb-24 md:pb-12 flex-shrink-0 relative z-30">
+              <div className={`max-w-md mx-auto rounded-[2.5rem] overflow-hidden backdrop-blur-3xl border shadow-2xl transition-all duration-500
+                 ${theme === 'dark' ? 'bg-[#121212]/60 border-white/10 shadow-black/50' : 'bg-white/50 border-white/40 shadow-xl'}`}>
 
-                  {countdownNum !== null && countdownNum > 0 && (
-                      <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-3xl">
-                          <span className="text-6xl font-black text-white animate-bounce">{countdownNum}</span>
+                 {/* Tab Switcher */}
+                 <div className="flex p-2 gap-2">
+                   <button onClick={() => setActiveTab('mixer')}
+                     className={`flex-1 py-3 rounded-3xl text-[10px] font-bold tracking-[0.2em] flex items-center justify-center gap-2 transition-all
+                       ${activeTab === 'mixer' ? (theme === 'dark' ? 'bg-white/10 shadow-inner' : 'bg-white shadow-sm') : 'opacity-40 hover:opacity-70'}`}>
+                       <SlidersHorizontal size={14} /> {t.mixer}
+                   </button>
+                   <button onClick={() => setActiveTab('timer')}
+                     className={`flex-1 py-3 rounded-3xl text-[10px] font-bold tracking-[0.2em] flex items-center justify-center gap-2 transition-all
+                       ${activeTab === 'timer' ? (theme === 'dark' ? 'bg-white/10 shadow-inner' : 'bg-white shadow-sm') : 'opacity-40 hover:opacity-70'}`}>
+                       <TimerIcon size={14} /> {t.timer}
+                   </button>
+                 </div>
+
+                 <div className="h-56 px-6 pb-6 relative">
+                   {/* Mixer Panel */}
+                   <div className={`absolute inset-0 px-6 pb-6 flex items-center justify-between transition-all duration-500
+                      ${activeTab === 'mixer' ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 -translate-x-10 pointer-events-none'}`}>
+                      {AMBIENT_SOUNDS.map(s => (
+                        <SoundKnob key={s.id}
+                          icon={s.icon}
+                          label={s.label}
+                          volume={ambientVolumes[s.id]}
+                          onChange={(v: number) => setAmbientVolumes(p => ({...p, [s.id]: v}))}
+                          activeColor={activeScene?.bg} theme={theme}
+                        />
+                      ))}
+                   </div>
+
+                   {/* Timer Panel */}
+                   <div className={`absolute inset-0 px-6 pb-6 flex flex-col items-center justify-center gap-4 transition-all duration-500
+                      ${activeTab === 'timer' ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-10 pointer-events-none'}`}>
+
+                      {countdownNum !== null && countdownNum > 0 && (
+                          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-3xl">
+                              <span className="text-6xl font-black text-white animate-bounce">{countdownNum}</span>
+                          </div>
+                      )}
+
+                      <TimerDisplay
+                         time={timerState.time}
+                         isRunning={timerState.running}
+                         mode={t.timer_modes[timerState.mode as keyof typeof t.timer_modes]}
+                         theme={theme}
+                         translations={t}
+                         activeSceneColor={activeScene?.color}
+                      />
+
+                      <div className="w-full flex items-center gap-3 px-2 z-10">
+                         <span className="text-[9px] font-bold opacity-30">1m</span>
+                         <input
+                            type="range"
+                            min="1" max="60"
+                            value={Math.floor(timerState.initial / 60)}
+                            onChange={(e) => handleTimeSliderChange(parseInt(e.target.value))}
+                            disabled={timerState.running}
+                            className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-current z-20 disabled:opacity-50"
+                         />
+                         <span className="text-[9px] font-bold opacity-30">60m</span>
                       </div>
-                  )}
 
-                  <TimerDisplay
-                     time={timerState.time}
-                     isRunning={timerState.running}
-                     mode={t.timer_modes[timerState.mode as keyof typeof t.timer_modes]}
-                     theme={theme}
-                     translations={t}
-                     activeSceneColor={activeScene?.color}
-                  />
+                      <div className="flex gap-4 w-full z-10">
+                         <button onClick={switchTimerMode} disabled={timerState.running} className="flex-1 py-3 rounded-2xl bg-current/5 hover:bg-current/10 font-bold text-[10px] tracking-widest uppercase transition-colors disabled:opacity-30">
+                           {timerState.mode === 'focus' ? t.timer_modes.breath : t.timer_modes.focus}
+                         </button>
 
-                  <div className="w-full flex items-center gap-3 px-2 z-10">
-                     <span className="text-[9px] font-bold opacity-30">1m</span>
-                     <input
-                        type="range"
-                        min="1" max="60"
-                        value={Math.floor(timerState.initial / 60)}
-                        onChange={(e) => handleTimeSliderChange(parseInt(e.target.value))}
-                        disabled={timerState.running}
-                        className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-current z-20 disabled:opacity-50"
-                     />
-                     <span className="text-[9px] font-bold opacity-30">60m</span>
-                  </div>
+                         <button onClick={timerState.running ? stopTimer : handleStartTimer} className={`flex-1 py-3 rounded-2xl font-bold text-[10px] tracking-widest uppercase text-white shadow-lg active:scale-95 transition-all
+                            ${timerState.running ? 'bg-zinc-800' : activeScene?.bg || 'bg-black'}`}>
+                            {timerState.running ? 'STOP' : 'START'}
+                         </button>
 
-                  <div className="flex gap-4 w-full z-10">
-                     <button onClick={switchTimerMode} disabled={timerState.running} className="flex-1 py-3 rounded-2xl bg-current/5 hover:bg-current/10 font-bold text-[10px] tracking-widest uppercase transition-colors disabled:opacity-30">
-                       {timerState.mode === 'focus' ? t.timer_modes.breath : t.timer_modes.focus}
-                     </button>
-
-                     <button onClick={timerState.running ? stopTimer : handleStartTimer} className={`flex-1 py-3 rounded-2xl font-bold text-[10px] tracking-widest uppercase text-white shadow-lg active:scale-95 transition-all
-                        ${timerState.running ? 'bg-zinc-800' : activeScene?.bg || 'bg-black'}`}>
-                        {timerState.running ? 'STOP' : 'START'}
-                     </button>
-
-                     <button onClick={resetTimer} className="w-12 flex items-center justify-center rounded-2xl bg-current/5 hover:bg-current/10 transition-colors" title="Reset Timer">
-                        <RotateCcw size={16} />
-                     </button>
-                  </div>
-               </div>
-             </div>
-          </div>
+                         <button onClick={resetTimer} className="w-12 flex items-center justify-center rounded-2xl bg-current/5 hover:bg-current/10 transition-colors" title="Reset Timer">
+                            <RotateCcw size={16} />
+                         </button>
+                      </div>
+                   </div>
+                 </div>
+              </div>
+            </div>
         </div>
 
       </main>
