@@ -144,21 +144,58 @@ const AuroraBackground = memo(({ activeScene, theme }: { activeScene: any, theme
 ));
 AuroraBackground.displayName = "AuroraBackground";
 
-// [新增] 科技感全息光晕组件
+// [REPLACED] High-End Fluid Mesh Gradient (Apple Music Style)
 const HolographicHalo = memo(({ isPlaying, theme }: { isPlaying: boolean, theme: string }) => {
-  if (!isPlaying) return <div className={`absolute inset-0 rounded-full border border-dashed opacity-20 transition-all duration-1000 ${theme === 'dark' ? 'border-white' : 'border-black'}`} />;
+  if (!isPlaying) {
+    return (
+      <div className={`absolute inset-0 rounded-full border border-dashed opacity-20 transition-all duration-1000 ${theme === 'dark' ? 'border-white' : 'border-black'}`} />
+    );
+  }
 
   return (
-    <>
-      {/* 动态锥形渐变层 1 */}
-      <div className="absolute inset-[-20px] rounded-full animate-[spin_4s_linear_infinite] opacity-60 blur-xl mix-blend-screen pointer-events-none"
-           style={{ background: 'conic-gradient(from 0deg, transparent 0deg, cyan 120deg, magenta 240deg, transparent 360deg)' }} />
-      {/* 动态锥形渐变层 2 (反向旋转) */}
-      <div className="absolute inset-[-20px] rounded-full animate-[spin_7s_linear_infinite_reverse] opacity-40 blur-2xl mix-blend-screen pointer-events-none"
-           style={{ background: 'conic-gradient(from 180deg, transparent 0deg, blue 120deg, purple 240deg, transparent 360deg)' }} />
-      {/* 核心发光圈 */}
-      <div className="absolute inset-0 rounded-full border border-white/20 shadow-[0_0_30px_rgba(255,255,255,0.3)] animate-pulse pointer-events-none" />
-    </>
+    <div className="absolute inset-[-30px] rounded-full pointer-events-none z-[-1] overflow-visible">
+       {/* Inject styles for organic movement that Tailwind utilities can't perfectly replicate */}
+       <style jsx>{`
+         @keyframes blob-bounce {
+           0%, 100% { transform: translate(0, 0) scale(1); }
+           25% { transform: translate(15px, -15px) scale(1.1); }
+           50% { transform: translate(-10px, 15px) scale(0.95); }
+           75% { transform: translate(-15px, -5px) scale(1.05); }
+         }
+         @keyframes blob-spin {
+           0% { transform: rotate(0deg) scale(1); }
+           50% { transform: rotate(180deg) scale(1.2); }
+           100% { transform: rotate(360deg) scale(1); }
+         }
+         @keyframes blob-flow {
+           0% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; transform: rotate(0deg); }
+           33% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+           66% { border-radius: 30% 70% 50% 50% / 30% 30% 60% 70%; }
+           100% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; transform: rotate(360deg); }
+         }
+       `}</style>
+
+       {/* Soft Blur Container */}
+       <div className="absolute inset-0 filter blur-[40px] opacity-70">
+          {/* Orb 1: Blue/Indigo - Moves organically */}
+          <div className="absolute top-0 -left-4 w-3/4 h-3/4 bg-blue-500/60 rounded-full mix-blend-screen animate-[blob-bounce_13s_ease-in-out_infinite]"
+               style={{ animationDelay: '0s' }} />
+
+          {/* Orb 2: Purple/Pink - Moves organically opposingly */}
+          <div className="absolute -bottom-4 -right-4 w-3/4 h-3/4 bg-purple-500/60 rounded-full mix-blend-screen animate-[blob-bounce_17s_ease-in-out_infinite_reverse]"
+               style={{ animationDelay: '2s' }} />
+
+          {/* Orb 3: Cyan/Teal - Rotates slowly in the center to create fusion */}
+          <div className="absolute top-1/4 left-1/4 w-2/3 h-2/3 bg-cyan-400/40 rounded-full mix-blend-screen animate-[blob-spin_25s_linear_infinite]" />
+
+          {/* Orb 4: Dynamic Highlight - Fast fluid morphing */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/2 h-1/2 bg-indigo-300/50 mix-blend-overlay"
+               style={{ animation: 'blob-flow 15s linear infinite' }} />
+       </div>
+
+       {/* Subtle Core Pulse - Keeps the center grounded */}
+       <div className="absolute inset-2 rounded-full border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.15)] animate-pulse" />
+    </div>
   );
 });
 HolographicHalo.displayName = "HolographicHalo";
@@ -220,7 +257,6 @@ const SoundKnob = ({ volume, onChange, icon: Icon, label, activeColor, theme }: 
   );
 };
 
-// [修改点] 呼吸动画：使用 Scale 变换
 const BreathingGuide = ({ isRunning, activeSceneColor, onPhaseChange, phase }: { isRunning: boolean, activeSceneColor: string, onPhaseChange: (phase: 'in' | 'out') => void, phase: 'in' | 'out' }) => {
   if (!isRunning) return null;
 
@@ -242,13 +278,11 @@ const BreathingGuide = ({ isRunning, activeSceneColor, onPhaseChange, phase }: {
   );
 };
 
-// [修改点] TimerDisplay：增加倒计时和字号缩放文字
 const TimerDisplay = ({ time, isRunning, mode, theme, translations, activeSceneColor, onStart, onStop }: any) => {
   const [breathPhase, setBreathPhase] = useState<'in' | 'out'>('in');
   const [countdown, setCountdown] = useState<number | null>(null);
   const isBreathMode = (mode === 'BREATH' || mode === '呼吸' || mode === '呼吸');
 
-  // 内部 Start 逻辑：先倒计时，再回调父级
   const handleInternalStart = () => {
     if (isBreathMode) {
       setCountdown(3);
@@ -260,7 +294,7 @@ const TimerDisplay = ({ time, isRunning, mode, theme, translations, activeSceneC
         } else {
           clearInterval(timer);
           setCountdown(null);
-          onStart(); // 真正的开始
+          onStart();
         }
       }, 1000);
     } else {
@@ -282,7 +316,6 @@ const TimerDisplay = ({ time, isRunning, mode, theme, translations, activeSceneC
   return (
     <div className="text-center relative py-6 w-full flex flex-col items-center justify-center flex-1">
 
-      {/* 倒计时遮罩层 */}
       {countdown !== null && (
         <div className="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm rounded-xl">
           <span className="text-6xl font-black animate-ping">{countdown}</span>
@@ -298,13 +331,11 @@ const TimerDisplay = ({ time, isRunning, mode, theme, translations, activeSceneC
         />
       )}
 
-      {/* 时间数字 */}
       <div className={`text-6xl font-mono font-bold tracking-tighter tabular-nums leading-none relative z-10 transition-colors duration-300 select-none
           ${shouldShowBreathGuide ? 'opacity-90' : 'opacity-100'}`}>
         {Math.floor(time / 60).toString().padStart(2, '0')}:{Math.floor(time % 60).toString().padStart(2, '0')}
       </div>
 
-      {/* 动态呼吸文字 - 使用字号和字间距变化 */}
       <div className="mt-4 h-8 flex items-center justify-center relative z-10 w-full">
          {shouldShowBreathGuide ? (
            <span className={`text-xs font-bold uppercase transition-all duration-[4000ms] ease-in-out flex items-center gap-2
@@ -320,9 +351,8 @@ const TimerDisplay = ({ time, isRunning, mode, theme, translations, activeSceneC
          )}
       </div>
 
-      {/* 控制按钮注入到这里为了布局方便，虽然逻辑上有点耦合 */}
       <div className="absolute -bottom-14 left-0 right-0 flex gap-4 w-full z-10 px-6">
-          <button className="flex-1 py-3 rounded-2xl bg-current/5 hover:bg-current/10 font-bold text-[10px] tracking-widest uppercase transition-colors pointer-events-none opacity-0">Placeholder</button> {/* 占位 */}
+          <button className="flex-1 py-3 rounded-2xl bg-current/5 hover:bg-current/10 font-bold text-[10px] tracking-widest uppercase transition-colors pointer-events-none opacity-0">Placeholder</button>
       </div>
     </div>
   );
@@ -337,7 +367,7 @@ export default function ZenFlowRedesignV2() {
   const [viewMode, setViewMode] = useState<'home' | 'player'>('home');
 
   // Player State
-  const [isMainPlaying, setIsMainPlaying] = useState(false); // 仅控制主音乐
+  const [isMainPlaying, setIsMainPlaying] = useState(false);
   const [isLoadingStream, setIsLoadingStream] = useState(false);
   const [currentStreamUrl, setCurrentStreamUrl] = useState("");
   const [currentStreamIndex, setCurrentStreamIndex] = useState(0);
@@ -347,7 +377,7 @@ export default function ZenFlowRedesignV2() {
   // Tools State
   const [activeTab, setActiveTab] = useState<'mixer' | 'timer'>('mixer');
   const [timerState, setTimerState] = useState({ mode: 'focus', time: 25 * 60, initial: 25 * 60, running: false });
-  const [countdownNum, setCountdownNum] = useState<number | null>(null); // 提升倒计时状态
+  const [countdownNum, setCountdownNum] = useState<number | null>(null);
 
   // Refs
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -365,7 +395,6 @@ export default function ZenFlowRedesignV2() {
     return t.greeting.e;
   };
 
-  // 主音乐控制 Effect
   useEffect(() => {
     if (!audioRef.current) return;
     audioRef.current.volume = mainVolume;
@@ -376,14 +405,12 @@ export default function ZenFlowRedesignV2() {
     }
   }, [isMainPlaying, currentStreamUrl, mainVolume]);
 
-  // [修改点] 环境音控制 Effect - 独立于 isMainPlaying
   useEffect(() => {
     const refs = { rain: rainRef.current, fire: fireRef.current, birds: birdsRef.current };
     Object.entries(ambientVolumes).forEach(([key, vol]) => {
       const el = refs[key as keyof typeof refs];
       if (el) {
         el.volume = vol;
-        // 只要音量大于0，就播放。不需要依赖 isMainPlaying
         if (vol > 0 && el.paused) {
             el.play().catch(() => {});
         } else if (vol === 0) {
@@ -391,7 +418,7 @@ export default function ZenFlowRedesignV2() {
         }
       }
     });
-  }, [ambientVolumes]); // 依赖项移除 isMainPlaying
+  }, [ambientVolumes]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -423,7 +450,6 @@ export default function ZenFlowRedesignV2() {
 
   const handleStartTimer = () => {
       if(timerState.mode === 'breath') {
-          // 呼吸模式的321逻辑在组件内部或这里处理
           setCountdownNum(3);
           let c = 3;
           const i = setInterval(() => {
@@ -544,10 +570,10 @@ export default function ZenFlowRedesignV2() {
         <div className="flex-1 flex flex-col items-center justify-center relative min-h-[350px] flex-shrink-0">
            <div className="relative w-72 h-72 md:w-96 md:h-96 flex items-center justify-center">
 
-              {/* [新增] 科技感光晕 */}
+              {/* [UPDATED] Apple Style Fluid Halo */}
               <HolographicHalo isPlaying={isMainPlaying} theme={theme} />
 
-              {/* 背景底色 */}
+              {/* Background Glow */}
               <div className={`absolute w-40 h-40 rounded-full blur-[60px] opacity-50 transition-all duration-1000 ${activeScene?.bg}`} />
 
               <div className="flex items-center gap-4 relative z-20">
