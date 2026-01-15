@@ -100,7 +100,7 @@ const SCENES_CONFIG = [
     accentColor: "bg-purple-500",
     gradient: "from-purple-900/40 to-blue-900/40",
     playlist: [
-      "https://stream.laut.fm/lofi", // 经典 Lo-Fi
+      "https://stream.laut.fm/lofi" // 经典 Lo-Fi
     ]
   },
   {
@@ -110,7 +110,7 @@ const SCENES_CONFIG = [
     accentColor: "bg-emerald-500",
     gradient: "from-emerald-900/40 to-teal-900/40",
     playlist: [
-      "https://ice2.somafm.com/groovesalad-128-mp3", // SomaFM Groove Salad (Best Chill)
+      "https://ice2.somafm.com/groovesalad-128-mp3" // SomaFM Groove Salad (Best Chill)
 
     ]
   },
@@ -121,9 +121,9 @@ const SCENES_CONFIG = [
     accentColor: "bg-amber-500",
     gradient: "from-amber-900/40 to-orange-900/40",
     playlist: [
-      "https://listen.181fm.com/181-classicalguitar_128k.mp3" // FluxFM Jazz
-      "https://ice4.somafm.com/lush-128-mp3" // SomaFM Lush
-      "https://ice2.somafm.com/illstreet-128-mp3", // SomaFM Ill Street Lounge (Better than broken kaffeehaus)
+      "https://listen.181fm.com/181-classicalguitar_128k.mp3", // FluxFM Jazz
+      "https://ice4.somafm.com/lush-128-mp3", // SomaFM Lush
+      "https://ice2.somafm.com/illstreet-128-mp3" // SomaFM Ill Street Lounge (Better than broken kaffeehaus)
     ]
   },
   {
@@ -133,7 +133,7 @@ const SCENES_CONFIG = [
     accentColor: "bg-indigo-400",
     gradient: "from-indigo-900/40 to-slate-900/40",
     playlist: [
-      "https://pianosolo.streamguys1.com/live", // Whisperings Solo Piano Radio (The Gold Standard for Sleep)
+      "https://pianosolo.streamguys1.com/live" // Whisperings Solo Piano Radio (The Gold Standard for Sleep)
     ]
   },
   {
@@ -143,7 +143,7 @@ const SCENES_CONFIG = [
     accentColor: "bg-pink-500",
     gradient: "from-pink-900/40 to-rose-900/40",
     playlist: [
-      "https://ice2.somafm.com/beatblender-128-mp3", // SomaFM Beat Blender
+      "https://ice2.somafm.com/beatblender-128-mp3" // SomaFM Beat Blender
     ]
   },
 ];
