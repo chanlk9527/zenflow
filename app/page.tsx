@@ -118,23 +118,28 @@ const SCENES_CONFIG = [
   },
 ];
 
-// [REFINED] 极柔和配色表
-// 降低了不透明度，使用了更相近的色系来确保融合
-const SOFT_PALETTES: Record<string, { orbs: [string, string, string] }> = {
+// [UPGRADE] 高级流体配色表
+// 引入了对比色 (Contrast) 和高光色 (Highlight)，模拟 Apple Music 的光感
+const ELEVATED_PALETTES: Record<string, { orbs: [string, string, string] }> = {
   focus: {
-    orbs: ["bg-violet-500/40", "bg-indigo-400/30", "bg-fuchsia-500/30"]
+    // 紫色基调 + 青色撞色 + 玫红点缀
+    orbs: ["bg-[#7c3aed]", "bg-[#2dd4bf]", "bg-[#f472b6]"]
   },
   relax: {
-    orbs: ["bg-teal-500/30", "bg-emerald-400/30", "bg-cyan-500/20"]
+    // 祖母绿 + 柠檬黄 + 天空蓝
+    orbs: ["bg-[#059669]", "bg-[#facc15]", "bg-[#38bdf8]"]
   },
   cafe: {
-    orbs: ["bg-orange-500/30", "bg-amber-600/30", "bg-rose-400/20"]
+    // 琥珀色 + 绯红 + 暖白高光
+    orbs: ["bg-[#d97706]", "bg-[#e11d48]", "bg-[#fbbf24]"]
   },
   sleep: {
-    orbs: ["bg-indigo-900/50", "bg-blue-800/40", "bg-slate-700/40"]
+    // 深蓝 + 靛青 + 极光紫
+    orbs: ["bg-[#1e3a8a]", "bg-[#4f46e5]", "bg-[#8b5cf6]"]
   },
   creative: {
-    orbs: ["bg-pink-500/30", "bg-purple-500/30", "bg-rose-400/30"]
+    // 亮粉 + 荧光紫 + 橙色
+    orbs: ["bg-[#db2777]", "bg-[#9333ea]", "bg-[#f97316]"]
   }
 };
 
@@ -155,10 +160,10 @@ NoiseOverlay.displayName = "NoiseOverlay";
 
 const AuroraBackground = memo(({ activeScene, theme }: { activeScene: any, theme: string }) => (
   <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none transform-gpu">
-    {/* 纯色背景底色，避免黑色带来的死寂感 */}
+    {/* 纯色背景底色 */}
     <div className={`absolute inset-0 transition-colors duration-1000 ${theme === 'dark' ? 'bg-[#080808]' : 'bg-[#f4f6f8]'}`} />
 
-    {/* 仅在Home模式下显示的极微弱背景，Player模式下由Mesh接管 */}
+    {/* 仅在Home模式下显示的极微弱背景 */}
     {!activeScene && (
        <div className={`absolute inset-0 opacity-20 transition-all duration-1000 ${theme === 'dark' ? 'bg-gradient-to-b from-blue-900/20 to-transparent' : 'bg-gradient-to-b from-blue-100/50 to-transparent'}`} />
     )}
@@ -166,64 +171,64 @@ const AuroraBackground = memo(({ activeScene, theme }: { activeScene: any, theme
 ));
 AuroraBackground.displayName = "AuroraBackground";
 
-// [RE-ENGINEERED] Apple Style Ultra-Soft Mesh
-// 核心改动：
-// 1. mask-image: 径向遮罩，彻底消除边界。
-// 2. blur-3xl + scale: 极大的模糊半径。
-// 3. Low Opacity: 低透明度叠加，避免高饱和。
-const AppleStyleMesh = memo(({ isPlaying, activeSceneId }: { isPlaying: boolean, activeSceneId: string | null }) => {
-  const palette = activeSceneId && SOFT_PALETTES[activeSceneId]
-    ? SOFT_PALETTES[activeSceneId]
-    : SOFT_PALETTES.focus;
+// [RE-ENGINEERED] V2: Ultra-Fluid Apple Mesh
+// 修复了边界感，增强了混合模式的通透感，增加了旋转动态
+const AppleStyleMesh = memo(({ isPlaying, activeSceneId, theme }: { isPlaying: boolean, activeSceneId: string | null, theme: 'light' | 'dark' }) => {
+  const palette = activeSceneId && ELEVATED_PALETTES[activeSceneId]
+    ? ELEVATED_PALETTES[activeSceneId]
+    : ELEVATED_PALETTES.focus;
 
   return (
-    <div className={`absolute inset-0 z-[-1] flex items-center justify-center transition-opacity duration-[2000ms] ${isPlaying ? 'opacity-100' : 'opacity-20'}`}>
-
+    <div className={`absolute inset-0 z-[-1] flex items-center justify-center transition-opacity duration-[2000ms] ${isPlaying ? 'opacity-100' : 'opacity-30'}`}>
        <style>{`
-         @keyframes flow-1 {
-           0% { transform: translate3d(-20%, -20%, 0) scale(1); }
-           33% { transform: translate3d(20%, 10%, 0) scale(1.1); }
-           66% { transform: translate3d(-10%, 20%, 0) scale(0.9); }
-           100% { transform: translate3d(-20%, -20%, 0) scale(1); }
+         @keyframes blob-bounce {
+           0% { transform: translate(0, 0) scale(1); }
+           33% { transform: translate(30px, -50px) scale(1.1); }
+           66% { transform: translate(-20px, 20px) scale(0.9); }
+           100% { transform: translate(0, 0) scale(1); }
          }
-         @keyframes flow-2 {
-           0% { transform: translate3d(20%, 20%, 0) scale(1); }
-           33% { transform: translate3d(-20%, -10%, 0) scale(1.2); }
-           66% { transform: translate3d(10%, -20%, 0) scale(0.85); }
-           100% { transform: translate3d(20%, 20%, 0) scale(1); }
+         @keyframes blob-spin-slow {
+           0% { transform: rotate(0deg) scale(1); }
+           50% { transform: rotate(180deg) scale(1.2); }
+           100% { transform: rotate(360deg) scale(1); }
          }
-         @keyframes flow-3 {
-           0% { transform: translate3d(0, 0, 0) scale(1); }
-           50% { transform: translate3d(0, 10%, 0) scale(1.3); }
-           100% { transform: translate3d(0, 0, 0) scale(1); }
+         @keyframes blob-flow {
+           0% { transform: translate(0, 0) rotate(0deg); }
+           33% { transform: translate(10%, 10%) rotate(120deg); }
+           66% { transform: translate(-5%, -10%) rotate(240deg); }
+           100% { transform: translate(0, 0) rotate(360deg); }
          }
-         .mesh-container {
-            /* 关键：使用遮罩让边缘完全透明，消除矩形边界感 */
-            mask-image: radial-gradient(circle at center, black 0%, transparent 70%);
-            -webkit-mask-image: radial-gradient(circle at center, black 0%, transparent 70%);
+         .mesh-mask {
+            /* 核心：径向遮罩，让光晕在边缘逐渐透明，消除矩形边界 */
+            mask-image: radial-gradient(circle at center, black 20%, transparent 70%);
+            -webkit-mask-image: radial-gradient(circle at center, black 20%, transparent 70%);
          }
-         .animate-flow-slow * {
-            animation-play-state: running;
-            will-change: transform; /* 开启GPU加速 */
-         }
-         .animate-flow-paused * {
-            animation-play-state: paused;
-         }
+         .animate-blob-1 { animation: blob-flow 25s infinite linear; }
+         .animate-blob-2 { animation: blob-flow 30s infinite linear reverse; }
+         .animate-blob-3 { animation: blob-bounce 20s infinite ease-in-out; }
+
+         .paused-anim * { animation-play-state: paused !important; }
        `}</style>
 
-       {/* 容器比可视区域大，以容纳漂移 */}
-       <div className={`relative w-[150%] h-[150%] mesh-container ${isPlaying ? 'animate-flow-slow' : 'animate-flow-paused'}`}>
-          {/* 使用 filter blur-[100px] 甚至更高来实现极柔和效果 */}
-          <div className="absolute inset-0 blur-[100px] md:blur-[140px] saturate-150">
+       {/* 容器：比视口大，且应用遮罩 */}
+       <div className={`relative w-[180%] h-[180%] md:w-[120%] md:h-[120%] mesh-mask flex items-center justify-center
+          ${isPlaying ? '' : 'paused-anim'}`}>
 
-              {/* Blob 1: 巨大的主色块 */}
-              <div className={`absolute top-1/4 left-1/4 w-2/3 h-2/3 rounded-full mix-blend-screen animate-[flow-1_25s_ease-in-out_infinite] transition-colors duration-[3000ms] ${palette.orbs[0]}`} />
+          {/* 模糊层：使用极高的模糊度融合色块 */}
+          <div className={`relative w-full h-full filter blur-[80px] md:blur-[120px] saturate-[1.5] transition-all duration-1000
+             ${theme === 'dark' ? 'mix-blend-screen' : 'mix-blend-multiply opacity-80'}`}>
 
-              {/* Blob 2: 巨大的副色块 */}
-              <div className={`absolute bottom-1/4 right-1/4 w-2/3 h-2/3 rounded-full mix-blend-screen animate-[flow-2_30s_ease-in-out_infinite] transition-colors duration-[3000ms] ${palette.orbs[1]}`} />
+              {/* Orb 1: 主色调 - 大范围流动 */}
+              <div className={`absolute top-1/4 left-1/4 w-[60%] h-[60%] rounded-full opacity-60 animate-blob-1 transition-colors duration-[3000ms] ease-linear
+                ${palette.orbs[0]} mix-blend-screen`} />
 
-              {/* Blob 3: 中心高光块 */}
-              <div className={`absolute top-1/3 left-1/3 w-1/2 h-1/2 rounded-full mix-blend-plus-lighter animate-[flow-3_20s_ease-in-out_infinite] transition-colors duration-[3000ms] ${palette.orbs[2]}`} />
+              {/* Orb 2: 对比色 - 反向流动 */}
+              <div className={`absolute bottom-1/4 right-1/4 w-[60%] h-[60%] rounded-full opacity-60 animate-blob-2 transition-colors duration-[3000ms] ease-linear
+                ${palette.orbs[1]} mix-blend-screen`} />
+
+              {/* Orb 3: 高光色 - 中心脉动 */}
+              <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40%] h-[40%] rounded-full opacity-80 animate-blob-3 transition-colors duration-[3000ms] ease-linear
+                ${palette.orbs[2]} mix-blend-plus-lighter`} />
           </div>
        </div>
     </div>
@@ -569,9 +574,9 @@ export default function ZenFlowRedesignV2() {
         {/* Center Visualizer Area */}
         <div className="flex-1 flex flex-col items-center justify-center relative min-h-[350px] flex-shrink-0">
 
-           {/* [NEW] The Ultra Soft Apple Mesh Visualizer */}
-           <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-               <AppleStyleMesh isPlaying={isMainPlaying} activeSceneId={activeSceneId} />
+           {/* [UPDATED] The Ultra Soft Apple Mesh Visualizer */}
+           <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
+               <AppleStyleMesh isPlaying={isMainPlaying} activeSceneId={activeSceneId} theme={theme} />
            </div>
 
            <div className="relative w-72 h-72 md:w-96 md:h-96 flex items-center justify-center z-10">
