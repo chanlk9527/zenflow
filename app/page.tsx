@@ -224,27 +224,21 @@ const SoundKnob = ({ volume, onChange, icon: Icon, label, activeColor, theme }: 
   const barRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const fillColor = activeColor || (theme === 'dark' ? 'bg-white' : 'bg-black');
-
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
-    if (barRef.current) {
-       barRef.current.setPointerCapture(e.pointerId);
-    }
+    updateVolume(e.clientY);
+    window.addEventListener('pointermove', handleGlobalMove);
+    window.addEventListener('pointerup', handleGlobalUp);
+  };
+
+  const handleGlobalMove = (e: PointerEvent) => {
     updateVolume(e.clientY);
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
-     if(isDragging) {
-         updateVolume(e.clientY);
-     }
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
+  const handleGlobalUp = () => {
     setIsDragging(false);
-    if (barRef.current) {
-        barRef.current.releasePointerCapture(e.pointerId);
-    }
+    window.removeEventListener('pointermove', handleGlobalMove);
+    window.removeEventListener('pointerup', handleGlobalUp);
   };
 
   const updateVolume = (clientY: number) => {
@@ -260,13 +254,11 @@ const SoundKnob = ({ volume, onChange, icon: Icon, label, activeColor, theme }: 
       <div
         ref={barRef}
         onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        className={`relative w-12 h-32 rounded-full p-1 flex flex-col justify-end overflow-hidden cursor-ns-resize transition-colors duration-300 touch-none
+        className={`relative w-12 h-32 rounded-full p-1 flex flex-col justify-end overflow-hidden cursor-ns-resize transition-colors duration-300
           ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'}`}
       >
         <div
-          className={`w-full rounded-full transition-all duration-75 ${fillColor} ${isDragging ? 'opacity-100' : 'opacity-80'}`}
+          className={`w-full rounded-full transition-all duration-75 ${activeColor} ${isDragging ? 'opacity-100' : 'opacity-80'}`}
           style={{ height: `${volume * 100}%` }}
         />
         <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none transition-colors duration-300
@@ -376,13 +368,12 @@ export default function ZenFlowRedesignV2() {
 
   // Refs
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  // --- FIXED: Use a map for stable ambient refs ---
-  const ambientRefs = useRef<{[key: string]: HTMLAudioElement}>({});
+  // FIX: 使用对象Ref来统一管理环境音元素，解决ref分配错乱导致无法播放的问题
+  const ambientRefs = useRef<{ [key: string]: HTMLAudioElement | null }>({});
 
   const t = TRANSLATIONS[lang];
   const activeScene = SCENES_CONFIG.find(s => s.id === activeSceneId);
 
-  // Auto Theme
   useEffect(() => {
     const checkTime = () => {
       const hour = new Date().getHours();
@@ -402,50 +393,31 @@ export default function ZenFlowRedesignV2() {
     return t.greeting.e;
   };
 
-  // Main Audio Effect
   useEffect(() => {
     if (!audioRef.current) return;
     audioRef.current.volume = mainVolume;
     if (isMainPlaying && currentStreamUrl) {
-      const playPromise = audioRef.current.play();
-      if (playPromise !== undefined) {
-         playPromise
-           .then(() => setIsLoadingStream(false))
-           .catch(() => setIsMainPlaying(false));
-      }
+      audioRef.current.play().then(() => setIsLoadingStream(false)).catch(() => setIsMainPlaying(false));
     } else {
       audioRef.current.pause();
     }
   }, [isMainPlaying, currentStreamUrl, mainVolume]);
 
-  // --- FIXED: Ambient Sounds Playback Logic & Independence ---
+  // FIX: 修复后的混音台逻辑
   useEffect(() => {
     Object.entries(ambientVolumes).forEach(([key, vol]) => {
-      const el = ambientRefs.current[key];
+      const el = ambientRefs.current[key]; // 从RefMap中准确获取元素
       if (el) {
-        // 1. Independent Volume Control
         el.volume = vol;
-        el.muted = false; // Force unmute just in case
-
-        // 2. Play/Pause Logic with Promise handling
-        if (vol > 0) {
-           if (el.paused) {
-             const playPromise = el.play();
-             if (playPromise !== undefined) {
-                 playPromise.catch(error => {
-                     // Auto-play policy or rapid switching might cause aborts, safe to ignore
-                     // console.log("Audio play interrupted:", error);
-                 });
-             }
-           }
-        } else {
-           if (!el.paused) {
-             el.pause();
-           }
+        if (vol > 0 && el.paused) {
+            // 捕获播放错误（如自动播放策略限制）
+            el.play().catch((e) => console.log('Playback prevented:', e));
+        } else if (vol === 0) {
+            el.pause();
         }
       }
     });
-  }, [ambientVolumes]); // Only depends on ambientVolumes, totally independent of main audio
+  }, [ambientVolumes]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -514,23 +486,16 @@ export default function ZenFlowRedesignV2() {
       <NoiseOverlay />
       <AuroraBackground activeScene={activeScene} theme={theme} />
 
-      {/* Main Stream Audio */}
-      <audio
-        ref={audioRef}
-        src={currentStreamUrl}
-        onPlaying={() => setIsLoadingStream(false)}
-        onWaiting={() => setIsLoadingStream(true)}
-        crossOrigin="anonymous"
-      />
+      {/* 主播放器 */}
+      <audio ref={audioRef} src={currentStreamUrl} onPlaying={() => setIsLoadingStream(false)} onWaiting={() => setIsLoadingStream(true)} />
 
-      {/* Ambient Sounds - Independent Player */}
+      {/* FIX: 环境音播放器 - 使用Ref回调绑定，添加 preload 和 crossOrigin 增强稳定性 */}
       {AMBIENT_SOUNDS.map(s => (
         <audio
             key={s.id}
-            ref={(el) => { if (el) ambientRefs.current[s.id] = el; }}
+            ref={(el) => { ambientRefs.current[s.id] = el; }}
             src={s.url}
             loop
-            playsInline
             preload="auto"
             crossOrigin="anonymous"
         />
@@ -675,8 +640,7 @@ export default function ZenFlowRedesignV2() {
                           label={s.label}
                           volume={ambientVolumes[s.id]}
                           onChange={(v: number) => setAmbientVolumes(p => ({...p, [s.id]: v}))}
-                          activeColor={activeScene?.bg}
-                          theme={theme}
+                          activeColor={activeScene?.bg} theme={theme}
                         />
                       ))}
                    </div>
