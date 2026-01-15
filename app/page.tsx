@@ -71,29 +71,76 @@ const TRANSLATIONS = {
   }
 };
 
-// 定义每个场景的复杂流体配色方案
+const SCENES_CONFIG = [
+  {
+    id: "focus",
+    icon: <Zap size={24} />,
+    color: "text-purple-400",
+    bg: "bg-purple-500",
+    gradient: "from-purple-900/80 via-indigo-900/60 to-blue-900/60",
+    playlist: ["https://stream.laut.fm/lofi"]
+  },
+  {
+    id: "relax",
+    icon: <Wind size={24} />,
+    color: "text-emerald-400",
+    bg: "bg-emerald-500",
+    gradient: "from-emerald-900/80 via-teal-900/60 to-cyan-900/60",
+    playlist: ["https://ice2.somafm.com/groovesalad-128-mp3"]
+  },
+  {
+    id: "cafe",
+    icon: <Coffee size={24} />,
+    color: "text-amber-400",
+    bg: "bg-amber-500",
+    gradient: "from-amber-900/80 via-orange-900/60 to-red-900/60",
+    playlist: [
+      "https://listen.181fm.com/181-classicalguitar_128k.mp3",
+      "https://ice4.somafm.com/lush-128-mp3",
+      "https://ice2.somafm.com/illstreet-128-mp3"
+    ]
+  },
+  {
+    id: "sleep",
+    icon: <Moon size={24} />,
+    color: "text-indigo-300",
+    bg: "bg-indigo-400",
+    gradient: "from-indigo-900/80 via-slate-900/60 to-black/80",
+    playlist: ["https://pianosolo.streamguys1.com/live"]
+  },
+  {
+    id: "creative",
+    icon: <Sparkles size={24} />,
+    color: "text-pink-400",
+    bg: "bg-pink-500",
+    gradient: "from-pink-900/80 via-rose-900/60 to-purple-900/60",
+    playlist: ["https://ice2.somafm.com/beatblender-128-mp3"]
+  },
+];
+
+// [NEW] 复杂流体配色方案 (Apple Music Style)
 // base: 基础背景色
 // orbs: 三个浮动球体的颜色（通常包含：主色深色、互补色、高光色）
 const SCENE_PALETTES: Record<string, { base: string, orbs: [string, string, string] }> = {
   focus: {
-    base: "bg-[#240b36]", //以此为底
-    orbs: ["bg-purple-600", "bg-indigo-500", "bg-fuchsia-400"] // 紫色系混入蓝紫和粉紫
+    base: "bg-[#240b36]",
+    orbs: ["bg-purple-600", "bg-indigo-500", "bg-fuchsia-400"]
   },
   relax: {
     base: "bg-[#0f2027]",
-    orbs: ["bg-emerald-600", "bg-teal-500", "bg-cyan-300"] // 绿色系混入青色和荧光绿
+    orbs: ["bg-emerald-600", "bg-teal-500", "bg-cyan-300"]
   },
   cafe: {
     base: "bg-[#3e1e14]",
-    orbs: ["bg-amber-700", "bg-orange-600", "bg-rose-500"] // 琥珀色系混入深橙和玫瑰红
+    orbs: ["bg-amber-700", "bg-orange-600", "bg-rose-500"]
   },
   sleep: {
     base: "bg-[#0b1026]",
-    orbs: ["bg-indigo-800", "bg-slate-700", "bg-violet-900"] // 深蓝系混入灰蓝和深紫
+    orbs: ["bg-indigo-800", "bg-slate-700", "bg-violet-900"]
   },
   creative: {
     base: "bg-[#2c001e]",
-    orbs: ["bg-pink-600", "bg-rose-500", "bg-purple-500"] // 粉色系混入玫瑰和紫色
+    orbs: ["bg-pink-600", "bg-rose-500", "bg-purple-500"]
   }
 };
 
@@ -134,7 +181,7 @@ const FluidMeshVisualizer = memo(({ isPlaying, activeSceneId, theme }: { isPlayi
     <div className={`absolute inset-[-60px] md:inset-[-80px] rounded-full z-[-1] overflow-hidden transition-opacity duration-1000 ${isPlaying ? 'opacity-100' : 'opacity-30'}`}>
 
        {/* 注入流体动画的关键帧样式 */}
-       <style jsx>{`
+       <style>{`
          @keyframes drift-1 {
            0% { transform: translate(0, 0) rotate(0deg) scale(1); }
            33% { transform: translate(30px, -50px) rotate(120deg) scale(1.2); }
@@ -189,7 +236,6 @@ const FluidMeshVisualizer = memo(({ isPlaying, activeSceneId, theme }: { isPlayi
   );
 });
 FluidMeshVisualizer.displayName = "FluidMeshVisualizer";
-
 
 // --- 3. 微组件 ---
 
@@ -560,11 +606,11 @@ export default function ZenFlowRedesignV2() {
         <div className="flex-1 flex flex-col items-center justify-center relative min-h-[350px] flex-shrink-0">
            <div className="relative w-72 h-72 md:w-96 md:h-96 flex items-center justify-center">
 
-              {/* [UPDATED] 使用新的流体视觉组件 */}
+              {/* [UPDATED] Fluid Mesh Visualizer */}
               <FluidMeshVisualizer
-                    isPlaying={isMainPlaying}
-                    activeSceneId={activeSceneId}
-                    theme={theme}
+                  isPlaying={isMainPlaying}
+                  activeSceneId={activeSceneId}
+                  theme={theme}
               />
 
               <div className="flex items-center gap-4 relative z-20">
