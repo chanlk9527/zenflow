@@ -3,9 +3,12 @@ https://ice2.somafm.com/illstreet-128-mp3
 https://ice2.somafm.com/lush-128-mp3
 
 
+https://stream.laut.fm/lofi
 https://tsfjazz.ice.infomaniak.ch/tsfjazz-high.mp3
 https://ice2.somafm.com/groovesalad-128-mp3
+https://ice2.somafm.com/beatblender-128-mp3
 
+https://pianosolo.streamguys1.com/live
 
 https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg
 https://actions.google.com/sounds/v1/ambiences/fireplace.ogg
