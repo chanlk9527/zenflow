@@ -1,185 +1,16 @@
-"use client";
+// ... (之前的 imports 和 数据配置保持不变)
 
-import React, { useState, useRef, useEffect, memo } from "react";
-import {
-  Play, Pause, Zap, Moon, Coffee, Wind, SkipForward,
-  Loader2, Sparkles, CloudRain, Flame, Bird, SlidersHorizontal,
-  ArrowLeft, RotateCcw, Timer as TimerIcon
-} from "lucide-react";
+// --- 修改 1: 优化 AppleStyleMesh 组件 ---
+// 目标：扩大遮罩范围，移除边界感，让光晕充满全屏
 
-// --- 1. 数据配置 ---
-
-type LangKey = 'en' | 'cn' | 'jp';
-
-const TRANSLATIONS = {
-  en: {
-    greeting: { m: "Good Morning", a: "Good Afternoon", e: "Good Evening" },
-    tagline: "Design your soundscape.",
-    app_title: "ZENFLOW",
-    playing: "ON AIR",
-    paused: "PAUSED",
-    connecting: "TUNING...",
-    mixer: "MIXER",
-    timer: "TIMER",
-    timer_modes: { focus: "FOCUS", breath: "BREATH" },
-    breath_guide: { in: "INHALE", out: "EXHALE", hold: "HOLD", ready: "READY" },
-    scenes: {
-      focus: { title: "Deep Focus", subtitle: "Lo-Fi Beats", desc: "For intense work sessions." },
-      relax: { title: "Chill Wave", subtitle: "Downtempo", desc: "Unwind and decompress." },
-      cafe: { title: "Night Cafe", subtitle: "Jazz Lounge", desc: "Warmth of the city." },
-      sleep: { title: "Dream State", subtitle: "Solo Piano", desc: "Drift into silence." },
-      creative: { title: "Neural Flow", subtitle: "Deep House", desc: "Spark creativity." }
-    }
-  },
-  cn: {
-    greeting: { m: "早上好", a: "下午好", e: "晚上好" },
-    tagline: "定制你的心流声景。",
-    app_title: "心流终端",
-    playing: "正在广播",
-    paused: "已暂停",
-    connecting: "调频中...",
-    mixer: "混音台",
-    timer: "计时器",
-    timer_modes: { focus: "专注", breath: "呼吸" },
-    breath_guide: { in: "吸气", out: "呼气", hold: "保持", ready: "准备" },
-    scenes: {
-      focus: { title: "深度专注", subtitle: "Lo-Fi 学习", desc: "为深度工作而生。" },
-      relax: { title: "舒缓律动", subtitle: "沙发音乐", desc: "放松身心，卸下疲惫。" },
-      cafe: { title: "午夜咖啡", subtitle: "爵士长廊", desc: "城市的温暖角落。" },
-      sleep: { title: "筑梦空间", subtitle: "纯净钢琴", desc: "在静谧中入眠。" },
-      creative: { title: "神经漫游", subtitle: "电子灵感", desc: "激发大脑创造力。" }
-    }
-  },
-  jp: {
-    greeting: { m: "おはよう", a: "こんにちは", e: "こんばんは" },
-    tagline: "あなただけの音風景。",
-    app_title: "ゼン・フロー",
-    playing: "放送中",
-    paused: "停止中",
-    connecting: "接続中...",
-    mixer: "ミキサー",
-    timer: "タイマー",
-    timer_modes: { focus: "集中", breath: "呼吸" },
-    breath_guide: { in: "吸う", out: "吐く", hold: "止める", ready: "準備" },
-    scenes: {
-      focus: { title: "集中学習", subtitle: "Lo-Fi", desc: "深い集中のために。" },
-      relax: { title: "リラックス", subtitle: "チルアウト", desc: "心を落ち着かせる。" },
-      cafe: { title: "カフェ", subtitle: "ジャズ", desc: "都会の隠れ家。" },
-      sleep: { title: "睡眠導入", subtitle: "ピアノ", desc: "静寂への誘い。" },
-      creative: { title: "創造性", subtitle: "ハウス", desc: "インスピレーション。" }
-    }
-  }
-};
-
-const SCENES_CONFIG = [
-  {
-    id: "focus",
-    icon: <Zap size={24} />,
-    color: "text-purple-400",
-    bg: "bg-purple-500",
-    gradient: "from-purple-900/80 via-indigo-900/60 to-blue-900/60",
-    playlist: ["https://stream.laut.fm/lofi"]
-  },
-  {
-    id: "relax",
-    icon: <Wind size={24} />,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500",
-    gradient: "from-emerald-900/80 via-teal-900/60 to-cyan-900/60",
-    playlist: ["https://ice2.somafm.com/groovesalad-128-mp3"]
-  },
-  {
-    id: "cafe",
-    icon: <Coffee size={24} />,
-    color: "text-amber-400",
-    bg: "bg-amber-500",
-    gradient: "from-amber-900/80 via-orange-900/60 to-red-900/60",
-    playlist: [
-      "https://listen.181fm.com/181-classicalguitar_128k.mp3",
-      "https://ice4.somafm.com/lush-128-mp3",
-      "https://ice2.somafm.com/illstreet-128-mp3"
-    ]
-  },
-  {
-    id: "sleep",
-    icon: <Moon size={24} />,
-    color: "text-indigo-300",
-    bg: "bg-indigo-400",
-    gradient: "from-indigo-900/80 via-slate-900/60 to-black/80",
-    playlist: ["https://pianosolo.streamguys1.com/live"]
-  },
-  {
-    id: "creative",
-    icon: <Sparkles size={24} />,
-    color: "text-pink-400",
-    bg: "bg-pink-500",
-    gradient: "from-pink-900/80 via-rose-900/60 to-purple-900/60",
-    playlist: ["https://ice2.somafm.com/beatblender-128-mp3"]
-  },
-];
-
-// [UPGRADE] 高级流体配色表
-// 引入了对比色 (Contrast) 和高光色 (Highlight)，模拟 Apple Music 的光感
-const ELEVATED_PALETTES: Record<string, { orbs: [string, string, string] }> = {
-  focus: {
-    // 紫色基调 + 青色撞色 + 玫红点缀
-    orbs: ["bg-[#7c3aed]", "bg-[#2dd4bf]", "bg-[#f472b6]"]
-  },
-  relax: {
-    // 祖母绿 + 柠檬黄 + 天空蓝
-    orbs: ["bg-[#059669]", "bg-[#facc15]", "bg-[#38bdf8]"]
-  },
-  cafe: {
-    // 琥珀色 + 绯红 + 暖白高光
-    orbs: ["bg-[#d97706]", "bg-[#e11d48]", "bg-[#fbbf24]"]
-  },
-  sleep: {
-    // 深蓝 + 靛青 + 极光紫
-    orbs: ["bg-[#1e3a8a]", "bg-[#4f46e5]", "bg-[#8b5cf6]"]
-  },
-  creative: {
-    // 亮粉 + 荧光紫 + 橙色
-    orbs: ["bg-[#db2777]", "bg-[#9333ea]", "bg-[#f97316]"]
-  }
-};
-
-const AMBIENT_SOUNDS = [
-  { id: 'rain', icon: CloudRain, label: "RAIN", url: "https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg" },
-  { id: 'fire', icon: Flame, label: "FIRE", url: "https://actions.google.com/sounds/v1/ambiences/daytime_forrest_bonfire.ogg" },
-  { id: 'birds', icon: Bird, label: "FOREST", url: "https://archive.org/download/birdsounds_202001/quiet%20bird.ogg" }
-];
-
-// --- 2. 视觉组件 ---
-
-const NoiseOverlay = memo(() => (
-  <div className="fixed inset-0 pointer-events-none z-[50] opacity-[0.035] mix-blend-overlay will-change-transform"
-       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}>
-  </div>
-));
-NoiseOverlay.displayName = "NoiseOverlay";
-
-const AuroraBackground = memo(({ activeScene, theme }: { activeScene: any, theme: string }) => (
-  <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none transform-gpu">
-    {/* 纯色背景底色 */}
-    <div className={`absolute inset-0 transition-colors duration-1000 ${theme === 'dark' ? 'bg-[#080808]' : 'bg-[#f4f6f8]'}`} />
-
-    {/* 仅在Home模式下显示的极微弱背景 */}
-    {!activeScene && (
-       <div className={`absolute inset-0 opacity-20 transition-all duration-1000 ${theme === 'dark' ? 'bg-gradient-to-b from-blue-900/20 to-transparent' : 'bg-gradient-to-b from-blue-100/50 to-transparent'}`} />
-    )}
-  </div>
-));
-AuroraBackground.displayName = "AuroraBackground";
-
-// [RE-ENGINEERED] V2: Ultra-Fluid Apple Mesh
-// 修复了边界感，增强了混合模式的通透感，增加了旋转动态
 const AppleStyleMesh = memo(({ isPlaying, activeSceneId, theme }: { isPlaying: boolean, activeSceneId: string | null, theme: 'light' | 'dark' }) => {
   const palette = activeSceneId && ELEVATED_PALETTES[activeSceneId]
     ? ELEVATED_PALETTES[activeSceneId]
     : ELEVATED_PALETTES.focus;
 
   return (
-    <div className={`absolute inset-0 z-[-1] flex items-center justify-center transition-opacity duration-[2000ms] ${isPlaying ? 'opacity-100' : 'opacity-30'}`}>
+    // 这里的 z-index 设为 0 或 -1，确保它在按钮后面，但在背景底色上面
+    <div className={`absolute inset-0 z-0 flex items-center justify-center transition-opacity duration-[2000ms] overflow-hidden pointer-events-none ${isPlaying ? 'opacity-100' : 'opacity-30'}`}>
        <style>{`
          @keyframes blob-bounce {
            0% { transform: translate(0, 0) scale(1); }
@@ -199,9 +30,15 @@ const AppleStyleMesh = memo(({ isPlaying, activeSceneId, theme }: { isPlaying: b
            100% { transform: translate(0, 0) rotate(360deg); }
          }
          .mesh-mask {
-            /* 核心：径向遮罩，让光晕在边缘逐渐透明，消除矩形边界 */
-            mask-image: radial-gradient(circle at center, black 20%, transparent 70%);
-            -webkit-mask-image: radial-gradient(circle at center, black 20%, transparent 70%);
+            /*
+               [关键修改]
+               扩大径向渐变的范围。
+               之前是 transparent 70%，导致上下被切断。
+               现在改为 black 40% -> transparent 100% (或者去掉 mask，视需求而定)。
+               这里保留 mask 但极大放宽，保持边缘柔和但允许光晕触达底部。
+            */
+            mask-image: radial-gradient(circle at center, black 30%, transparent 95%);
+            -webkit-mask-image: radial-gradient(circle at center, black 30%, transparent 95%);
          }
          .animate-blob-1 { animation: blob-flow 25s infinite linear; }
          .animate-blob-2 { animation: blob-flow 30s infinite linear reverse; }
@@ -210,23 +47,23 @@ const AppleStyleMesh = memo(({ isPlaying, activeSceneId, theme }: { isPlaying: b
          .paused-anim * { animation-play-state: paused !important; }
        `}</style>
 
-       {/* 容器：比视口大，且应用遮罩 */}
-       <div className={`relative w-[180%] h-[180%] md:w-[120%] md:h-[120%] mesh-mask flex items-center justify-center
+       {/* 容器：极大尺寸，确保光晕能覆盖到屏幕的最角落 */}
+       <div className={`relative w-[200%] h-[200%] md:w-[150%] md:h-[150%] mesh-mask flex items-center justify-center
           ${isPlaying ? '' : 'paused-anim'}`}>
 
-          {/* 模糊层：使用极高的模糊度融合色块 */}
-          <div className={`relative w-full h-full filter blur-[80px] md:blur-[120px] saturate-[1.5] transition-all duration-1000
+          {/* 模糊层 */}
+          <div className={`relative w-full h-full filter blur-[80px] md:blur-[100px] saturate-[1.5] transition-all duration-1000
              ${theme === 'dark' ? 'mix-blend-screen' : 'mix-blend-multiply opacity-80'}`}>
 
-              {/* Orb 1: 主色调 - 大范围流动 */}
-              <div className={`absolute top-1/4 left-1/4 w-[60%] h-[60%] rounded-full opacity-60 animate-blob-1 transition-colors duration-[3000ms] ease-linear
+              {/* Orb 1 */}
+              <div className={`absolute top-1/4 left-1/4 w-[50%] h-[50%] rounded-full opacity-60 animate-blob-1 transition-colors duration-[3000ms] ease-linear
                 ${palette.orbs[0]} mix-blend-screen`} />
 
-              {/* Orb 2: 对比色 - 反向流动 */}
-              <div className={`absolute bottom-1/4 right-1/4 w-[60%] h-[60%] rounded-full opacity-60 animate-blob-2 transition-colors duration-[3000ms] ease-linear
+              {/* Orb 2 */}
+              <div className={`absolute bottom-1/4 right-1/4 w-[50%] h-[50%] rounded-full opacity-60 animate-blob-2 transition-colors duration-[3000ms] ease-linear
                 ${palette.orbs[1]} mix-blend-screen`} />
 
-              {/* Orb 3: 高光色 - 中心脉动 */}
+              {/* Orb 3 */}
               <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40%] h-[40%] rounded-full opacity-80 animate-blob-3 transition-colors duration-[3000ms] ease-linear
                 ${palette.orbs[2]} mix-blend-plus-lighter`} />
           </div>
@@ -236,265 +73,28 @@ const AppleStyleMesh = memo(({ isPlaying, activeSceneId, theme }: { isPlaying: b
 });
 AppleStyleMesh.displayName = "AppleStyleMesh";
 
-// --- 3. 微组件 ---
+// ... (SoundKnob, BreathingGuide, TimerDisplay 等微组件保持不变) ...
 
-const SoundKnob = ({ volume, onChange, icon: Icon, label, activeColor, theme }: any) => {
-  const barRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    setIsDragging(true);
-    updateVolume(e.clientY);
-    window.addEventListener('pointermove', handleGlobalMove);
-    window.addEventListener('pointerup', handleGlobalUp);
-  };
-
-  const handleGlobalMove = (e: PointerEvent) => {
-    updateVolume(e.clientY);
-  };
-
-  const handleGlobalUp = () => {
-    setIsDragging(false);
-    window.removeEventListener('pointermove', handleGlobalMove);
-    window.removeEventListener('pointerup', handleGlobalUp);
-  };
-
-  const updateVolume = (clientY: number) => {
-    if (!barRef.current) return;
-    const rect = barRef.current.getBoundingClientRect();
-    const percentage = 1 - (clientY - rect.top) / rect.height;
-    const newVolume = Math.max(0, Math.min(1, percentage));
-    onChange(newVolume);
-  };
-
-  return (
-    <div className="flex flex-col items-center gap-2 group w-14 select-none touch-none">
-      <div
-        ref={barRef}
-        onPointerDown={handlePointerDown}
-        className={`relative w-12 h-32 rounded-full p-1 flex flex-col justify-end overflow-hidden cursor-ns-resize transition-colors duration-300
-          ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'}`}
-      >
-        <div
-          className={`w-full rounded-full transition-all duration-75 ${activeColor} ${isDragging ? 'opacity-100' : 'opacity-80'}`}
-          style={{ height: `${volume * 100}%` }}
-        />
-        <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none transition-colors duration-300
-          ${volume > 0.1 ? 'text-white mix-blend-overlay' : (theme === 'dark' ? 'text-white/30' : 'text-black/30')}`}>
-          <Icon size={16} />
-        </div>
-      </div>
-      <div className="flex flex-col items-center">
-        <span className="text-[10px] font-bold tracking-widest opacity-40 uppercase">{label}</span>
-        <span className="text-[9px] font-mono opacity-30">{Math.round(volume * 100)}%</span>
-      </div>
-    </div>
-  );
-};
-
-const BreathingGuide = ({ isRunning, activeSceneColor, onPhaseChange, phase }: { isRunning: boolean, activeSceneColor: string, onPhaseChange: (phase: 'in' | 'out') => void, phase: 'in' | 'out' }) => {
-  if (!isRunning) return null;
-  const bgClass = activeSceneColor ? activeSceneColor.replace('text-', 'bg-') : 'bg-blue-500';
-
-  return (
-    <div className="absolute inset-0 z-[-1] flex items-center justify-center pointer-events-none overflow-hidden rounded-[2.5rem]">
-       <div
-          className={`w-44 aspect-square rounded-full transition-all duration-[4000ms] ease-in-out flex-shrink-0 opacity-10
-          ${bgClass}
-          ${phase === 'in' ? 'scale-110' : 'scale-75'}`}
-       />
-    </div>
-  );
-};
-
-const TimerDisplay = ({ time, isRunning, mode, theme, translations, activeSceneColor, onStart, onStop }: any) => {
-  const [breathPhase, setBreathPhase] = useState<'in' | 'out'>('in');
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const isBreathMode = (mode === 'BREATH' || mode === '呼吸' || mode === '呼吸');
-
-  useEffect(() => {
-    if (!isRunning || !isBreathMode) return;
-    setBreathPhase('in');
-    const interval = setInterval(() => {
-      setBreathPhase(p => (p === 'in' ? 'out' : 'in'));
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [isRunning, isBreathMode]);
-
-  const shouldShowBreathGuide = isBreathMode && isRunning;
-
-  return (
-    <div className="text-center relative py-6 w-full flex flex-col items-center justify-center flex-1">
-      {countdown !== null && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm rounded-xl">
-          <span className="text-6xl font-black animate-ping">{countdown}</span>
-        </div>
-      )}
-
-      {isBreathMode && (
-        <BreathingGuide
-          isRunning={isRunning && countdown === null}
-          activeSceneColor={activeSceneColor}
-          onPhaseChange={() => {}}
-          phase={breathPhase}
-        />
-      )}
-
-      <div className={`text-6xl font-mono font-bold tracking-tighter tabular-nums leading-none relative z-10 transition-colors duration-300 select-none
-          ${shouldShowBreathGuide ? 'opacity-90' : 'opacity-100'}`}>
-        {Math.floor(time / 60).toString().padStart(2, '0')}:{Math.floor(time % 60).toString().padStart(2, '0')}
-      </div>
-
-      <div className="mt-4 h-8 flex items-center justify-center relative z-10 w-full">
-         {shouldShowBreathGuide ? (
-           <span className={`text-xs font-bold uppercase transition-all duration-[4000ms] ease-in-out flex items-center gap-2
-              ${breathPhase === 'in' ? 'tracking-[0.6em] text-base opacity-100 scale-110' : 'tracking-[0.1em] text-xs opacity-60 scale-90'}
-           `}>
-             {breathPhase === 'in' ? translations.breath_guide.in : translations.breath_guide.out}
-           </span>
-         ) : (
-           <div className="flex items-center justify-center gap-2">
-             <span className={`w-2 h-2 rounded-full transition-colors duration-300 ${isRunning ? (activeSceneColor ? activeSceneColor.replace('text-', 'bg-') : 'bg-green-500') : 'bg-gray-400'}`}></span>
-             <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">{mode}</span>
-           </div>
-         )}
-      </div>
-    </div>
-  );
-};
-
-// --- 4. 主程序 ---
+// --- 修改 2: 主程序布局调整 ---
 
 export default function ZenFlowRedesignV2() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-  const [lang, setLang] = useState<LangKey>('en');
-  const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'home' | 'player'>('home');
+  // ... (State 和 Hooks 逻辑保持不变)
 
-  // Player State
-  const [isMainPlaying, setIsMainPlaying] = useState(false);
-  const [isLoadingStream, setIsLoadingStream] = useState(false);
-  const [currentStreamUrl, setCurrentStreamUrl] = useState("");
-  const [currentStreamIndex, setCurrentStreamIndex] = useState(0);
-  const [mainVolume, setMainVolume] = useState(0.8);
-  const [ambientVolumes, setAmbientVolumes] = useState<{ [key: string]: number }>({ rain: 0, fire: 0, birds: 0 });
-
-  // Tools State
-  const [activeTab, setActiveTab] = useState<'mixer' | 'timer'>('mixer');
-  const [timerState, setTimerState] = useState({ mode: 'focus', time: 25 * 60, initial: 25 * 60, running: false });
-  const [countdownNum, setCountdownNum] = useState<number | null>(null);
-
-  // Refs
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const rainRef = useRef<HTMLAudioElement | null>(null);
-  const fireRef = useRef<HTMLAudioElement | null>(null);
-  const birdsRef = useRef<HTMLAudioElement | null>(null);
-
-  const t = TRANSLATIONS[lang];
-  const activeScene = SCENES_CONFIG.find(s => s.id === activeSceneId);
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return t.greeting.m;
-    if (hour < 18) return t.greeting.a;
-    return t.greeting.e;
-  };
-
-  useEffect(() => {
-    if (!audioRef.current) return;
-    audioRef.current.volume = mainVolume;
-    if (isMainPlaying && currentStreamUrl) {
-      audioRef.current.play().then(() => setIsLoadingStream(false)).catch(() => setIsMainPlaying(false));
-    } else {
-      audioRef.current.pause();
-    }
-  }, [isMainPlaying, currentStreamUrl, mainVolume]);
-
-  useEffect(() => {
-    const refs = { rain: rainRef.current, fire: fireRef.current, birds: birdsRef.current };
-    Object.entries(ambientVolumes).forEach(([key, vol]) => {
-      const el = refs[key as keyof typeof refs];
-      if (el) {
-        el.volume = vol;
-        if (vol > 0 && el.paused) {
-            el.play().catch(() => {});
-        } else if (vol === 0) {
-            el.pause();
-        }
-      }
-    });
-  }, [ambientVolumes]);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (timerState.running && timerState.time > 0) {
-      interval = setInterval(() => setTimerState(p => ({ ...p, time: p.time - 1 })), 1000);
-    } else if (timerState.time === 0) {
-      setTimerState(p => ({ ...p, running: false }));
-    }
-    return () => clearInterval(interval);
-  }, [timerState.running, timerState.time]);
-
-  const enterScene = (scene: typeof SCENES_CONFIG[0]) => {
-    if (activeSceneId !== scene.id) {
-      setActiveSceneId(scene.id);
-      setCurrentStreamIndex(0);
-      setCurrentStreamUrl(scene.playlist[0]);
-      setIsMainPlaying(true);
-    }
-    setViewMode('player');
-  };
-
-  const handleNextTrack = () => {
-    if (!activeScene) return;
-    const nextIndex = (currentStreamIndex + 1) % activeScene.playlist.length;
-    setCurrentStreamIndex(nextIndex);
-    setCurrentStreamUrl(activeScene.playlist[nextIndex]);
-    setIsMainPlaying(true);
-  };
-
-  const handleStartTimer = () => {
-      if(timerState.mode === 'breath') {
-          setCountdownNum(3);
-          let c = 3;
-          const i = setInterval(() => {
-              c--;
-              setCountdownNum(c);
-              if(c <= 0) {
-                  clearInterval(i);
-                  setCountdownNum(null);
-                  setTimerState(p => ({ ...p, running: true }));
-              }
-          }, 1000);
-      } else {
-          setTimerState(p => ({ ...p, running: true }));
-      }
-  };
-
-  const stopTimer = () => setTimerState(p => ({ ...p, running: false }));
-  const resetTimer = () => setTimerState(p => ({ ...p, running: false, time: p.initial }));
-
-  const switchTimerMode = () => {
-    const newMode = timerState.mode === 'focus' ? 'breath' : 'focus';
-    const newTime = newMode === 'focus' ? 25 * 60 : 5 * 60;
-    setTimerState({ mode: newMode, time: newTime, initial: newTime, running: false });
-  };
-
-  const handleTimeSliderChange = (minutes: number) => {
-    const seconds = minutes * 60;
-    setTimerState(p => ({ ...p, time: seconds, initial: seconds, running: false }));
-  };
+  // 为了节省篇幅，省略未修改的逻辑代码，直接定位到 render 部分
 
   return (
     <div className={`relative h-[100dvh] w-full overflow-hidden font-sans select-none transition-colors duration-500 overscroll-none
       ${theme === 'dark' ? 'text-gray-100 bg-[#050505]' : 'text-slate-800 bg-[#f4f6f8]'}`}>
 
+      {/* 这里的 NoiseOverlay 和 AuroraBackground 是全局通用的底色 */}
       <NoiseOverlay />
       <AuroraBackground activeScene={activeScene} theme={theme} />
+
+      {/* Audio 元素保持不变... */}
       <audio ref={audioRef} src={currentStreamUrl} onPlaying={() => setIsLoadingStream(false)} onWaiting={() => setIsLoadingStream(true)} />
       {AMBIENT_SOUNDS.map(s => <audio key={s.id} ref={s.id === 'rain' ? rainRef : s.id === 'fire' ? fireRef : birdsRef} src={s.url} loop />)}
 
-      {/* Header */}
+      {/* Header 保持不变 */}
       <header className="fixed top-0 inset-x-0 z-40 p-6 flex justify-between items-center pointer-events-none">
         <div className="flex items-center gap-3 pointer-events-auto">
            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs border backdrop-blur-md transition-colors
@@ -509,56 +109,59 @@ export default function ZenFlowRedesignV2() {
         </div>
       </header>
 
-      {/* --- VIEW: HOME --- */}
+      {/* HOME VIEW (保持不变) */}
       <main className={`absolute inset-0 z-10 w-full h-full pt-24 px-6 pb-6 transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] overflow-y-auto
          ${viewMode === 'home' ? 'translate-x-0 opacity-100' : '-translate-x-[20%] opacity-0 pointer-events-none'}`}>
-
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8 md:mb-12 animate-fade-in-up">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-2">{getGreeting()}.</h1>
-            <p className="opacity-50 text-sm md:text-base font-medium">{t.tagline}</p>
+          {/* ... Home 内容 ... */}
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-8 md:mb-12 animate-fade-in-up">
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-2">{getGreeting()}.</h1>
+              <p className="opacity-50 text-sm md:text-base font-medium">{t.tagline}</p>
+            </div>
+            {/* ... 场景卡片 ... */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[160px] md:auto-rows-[180px] pb-10">
+                 <button onClick={() => enterScene(SCENES_CONFIG[0])}
+                  className={`md:col-span-2 row-span-2 rounded-[2rem] p-8 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.01] active:scale-[0.99] relative overflow-hidden group
+                    ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-white/60 border border-white/40 shadow-sm'}`}>
+                   <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-700 ${SCENES_CONFIG[0].gradient}`} />
+                   <div className="relative z-10">
+                     <div className="inline-flex p-3 rounded-xl bg-white/10 backdrop-blur-md mb-4 text-purple-300"><Zap size={24} /></div>
+                     <h2 className="text-3xl font-bold">{t.scenes.focus.title}</h2>
+                     <p className="opacity-60 mt-2 max-w-xs">{t.scenes.focus.desc}</p>
+                   </div>
+                   <div className="relative z-10 flex items-center gap-2 opacity-50 text-xs font-bold tracking-widest uppercase group-hover:opacity-100 transition-opacity">
+                      <Play size={12} fill="currentColor" /> Play Now
+                   </div>
+                </button>
+                {SCENES_CONFIG.slice(1).map((scene, i) => (
+                  <button key={scene.id} onClick={() => enterScene(scene)}
+                    className={`rounded-[2rem] p-6 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group
+                      ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-white/60 border border-white/40 shadow-sm'}
+                      ${i === 1 ? 'md:row-span-2' : ''}`}>
+                     <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-20 transition-opacity duration-500 ${scene.gradient}`} />
+                     <div className="relative z-10 flex justify-between items-start">
+                        <div className={`p-2 rounded-lg bg-white/10 backdrop-blur-sm ${scene.color}`}>{scene.icon}</div>
+                     </div>
+                     <div className="relative z-10">
+                       <h3 className="text-lg font-bold leading-tight">{t.scenes[scene.id as keyof typeof t.scenes].title}</h3>
+                       <p className="text-[10px] uppercase font-bold tracking-wider opacity-40 mt-1">{t.scenes[scene.id as keyof typeof t.scenes].subtitle}</p>
+                     </div>
+                  </button>
+                ))}
+            </div>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[160px] md:auto-rows-[180px] pb-10">
-            <button onClick={() => enterScene(SCENES_CONFIG[0])}
-              className={`md:col-span-2 row-span-2 rounded-[2rem] p-8 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.01] active:scale-[0.99] relative overflow-hidden group
-                ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-white/60 border border-white/40 shadow-sm'}`}>
-               <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-700 ${SCENES_CONFIG[0].gradient}`} />
-               <div className="relative z-10">
-                 <div className="inline-flex p-3 rounded-xl bg-white/10 backdrop-blur-md mb-4 text-purple-300">
-                    <Zap size={24} />
-                 </div>
-                 <h2 className="text-3xl font-bold">{t.scenes.focus.title}</h2>
-                 <p className="opacity-60 mt-2 max-w-xs">{t.scenes.focus.desc}</p>
-               </div>
-               <div className="relative z-10 flex items-center gap-2 opacity-50 text-xs font-bold tracking-widest uppercase group-hover:opacity-100 transition-opacity">
-                  <Play size={12} fill="currentColor" /> Play Now
-               </div>
-            </button>
-
-            {SCENES_CONFIG.slice(1).map((scene, i) => (
-              <button key={scene.id} onClick={() => enterScene(scene)}
-                className={`rounded-[2rem] p-6 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group
-                  ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-white/60 border border-white/40 shadow-sm'}
-                  ${i === 1 ? 'md:row-span-2' : ''}
-                `}>
-                 <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-20 transition-opacity duration-500 ${scene.gradient}`} />
-                 <div className="relative z-10 flex justify-between items-start">
-                    <div className={`p-2 rounded-lg bg-white/10 backdrop-blur-sm ${scene.color}`}>{scene.icon}</div>
-                 </div>
-                 <div className="relative z-10">
-                   <h3 className="text-lg font-bold leading-tight">{t.scenes[scene.id as keyof typeof t.scenes].title}</h3>
-                   <p className="text-[10px] uppercase font-bold tracking-wider opacity-40 mt-1">{t.scenes[scene.id as keyof typeof t.scenes].subtitle}</p>
-                 </div>
-              </button>
-            ))}
-          </div>
-        </div>
       </main>
 
       {/* --- VIEW: PLAYER --- */}
-      <main className={`fixed inset-0 z-20 flex flex-col overflow-y-auto overflow-x-hidden w-full transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]
+      <main className={`fixed inset-0 z-20 flex flex-col w-full transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]
          ${viewMode === 'player' ? 'translate-x-0 opacity-100' : 'translate-x-[20%] opacity-0 pointer-events-none'}`}>
+
+        {/*
+           [关键修改]
+           AppleStyleMesh 被移到了这里，作为 Player 的最底层背景。
+           absolute inset-0 让它撑满整个屏幕。
+        */}
+        <AppleStyleMesh isPlaying={isMainPlaying} activeSceneId={activeSceneId} theme={theme} />
 
         {/* Top Controls */}
         <div className="w-full max-w-md mx-auto px-6 pt-24 pb-4 flex justify-between items-end flex-shrink-0 relative z-30">
@@ -571,15 +174,10 @@ export default function ZenFlowRedesignV2() {
           </div>
         </div>
 
-        {/* Center Visualizer Area */}
-        <div className="flex-1 flex flex-col items-center justify-center relative min-h-[350px] flex-shrink-0">
-
-           {/* [UPDATED] The Ultra Soft Apple Mesh Visualizer */}
-           <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
-               <AppleStyleMesh isPlaying={isMainPlaying} activeSceneId={activeSceneId} theme={theme} />
-           </div>
-
-           <div className="relative w-72 h-72 md:w-96 md:h-96 flex items-center justify-center z-10">
+        {/* Center Play Button Area */}
+        <div className="flex-1 flex flex-col items-center justify-center relative min-h-[300px] flex-shrink-0 z-30">
+           {/* 之前这里包裹着 AppleStyleMesh，现在移除了，只保留按钮 */}
+           <div className="relative w-72 h-72 md:w-96 md:h-96 flex items-center justify-center">
               <div className="flex items-center gap-4 relative z-20">
                 <button
                   onClick={() => setIsMainPlaying(!isMainPlaying)}
@@ -604,8 +202,15 @@ export default function ZenFlowRedesignV2() {
 
         {/* Bottom Command Deck */}
         <div className="w-full px-6 pb-12 flex-shrink-0 relative z-30">
-          <div className={`max-w-md mx-auto rounded-[2.5rem] overflow-hidden backdrop-blur-2xl border shadow-2xl transition-all duration-500
-             ${theme === 'dark' ? 'bg-[#121212]/80 border-white/10 shadow-black/50' : 'bg-white/70 border-white/60 shadow-xl'}`}>
+          {/*
+             [关键修改]
+             调整背景透明度。
+             Dark Mode: bg-[#121212]/80 -> bg-[#121212]/60
+             Light Mode: bg-white/70 -> bg-white/50
+             增加 backdrop-blur 强度 (2xl -> 3xl) 以确保文字可读性，同时允许背景光晕透出颜色
+          */}
+          <div className={`max-w-md mx-auto rounded-[2.5rem] overflow-hidden backdrop-blur-3xl border shadow-2xl transition-all duration-500
+             ${theme === 'dark' ? 'bg-[#121212]/60 border-white/10 shadow-black/50' : 'bg-white/50 border-white/40 shadow-xl'}`}>
 
              {/* Tab Switcher */}
              <div className="flex p-2 gap-2">
@@ -640,7 +245,6 @@ export default function ZenFlowRedesignV2() {
                <div className={`absolute inset-0 px-6 pb-6 flex flex-col items-center justify-center gap-4 transition-all duration-500
                   ${activeTab === 'timer' ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-10 pointer-events-none'}`}>
 
-                  {/* 倒计时覆盖层 */}
                   {countdownNum !== null && countdownNum > 0 && (
                       <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-3xl">
                           <span className="text-6xl font-black text-white animate-bounce">{countdownNum}</span>
@@ -656,7 +260,7 @@ export default function ZenFlowRedesignV2() {
                      activeSceneColor={activeScene?.color}
                   />
 
-                  {/* 时间控制滑块 */}
+                  {/* Slider */}
                   <div className="w-full flex items-center gap-3 px-2 z-10">
                      <span className="text-[9px] font-bold opacity-30">1m</span>
                      <input
@@ -670,16 +274,15 @@ export default function ZenFlowRedesignV2() {
                      <span className="text-[9px] font-bold opacity-30">60m</span>
                   </div>
 
+                  {/* Buttons */}
                   <div className="flex gap-4 w-full z-10">
                      <button onClick={switchTimerMode} disabled={timerState.running} className="flex-1 py-3 rounded-2xl bg-current/5 hover:bg-current/10 font-bold text-[10px] tracking-widest uppercase transition-colors disabled:opacity-30">
                        {timerState.mode === 'focus' ? t.timer_modes.breath : t.timer_modes.focus}
                      </button>
-
                      <button onClick={timerState.running ? stopTimer : handleStartTimer} className={`flex-1 py-3 rounded-2xl font-bold text-[10px] tracking-widest uppercase text-white shadow-lg active:scale-95 transition-all
                         ${timerState.running ? 'bg-zinc-800' : activeScene?.bg || 'bg-black'}`}>
                         {timerState.running ? 'STOP' : 'START'}
                      </button>
-
                      <button onClick={resetTimer} className="w-12 flex items-center justify-center rounded-2xl bg-current/5 hover:bg-current/10 transition-colors" title="Reset Timer">
                         <RotateCcw size={16} />
                      </button>
