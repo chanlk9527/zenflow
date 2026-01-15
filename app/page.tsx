@@ -2,13 +2,12 @@
 
 import React, { useState, useRef, useEffect, memo } from "react";
 import {
-  Play, Pause, Zap, Moon, Coffee, Volume2, Wind, SkipForward,
-  Sun, Loader2, Sparkles, CloudRain, Flame, Bird, SlidersHorizontal,
-  ArrowLeft, RotateCcw, Infinity as InfinityIcon, Timer as TimerIcon,
-  Quote, MoreHorizontal, Power
+  Play, Pause, Zap, Moon, Coffee, Wind, SkipForward,
+  Loader2, Sparkles, CloudRain, Flame, Bird, SlidersHorizontal,
+  ArrowLeft, RotateCcw, Timer as TimerIcon
 } from "lucide-react";
 
-// --- 1. 数据配置 (保持不变) ---
+// --- 1. 数据配置 ---
 
 type LangKey = 'en' | 'cn' | 'jp';
 
@@ -23,7 +22,7 @@ const TRANSLATIONS = {
     mixer: "MIXER",
     timer: "TIMER",
     timer_modes: { focus: "FOCUS", breath: "BREATH" },
-    breath_guide: { in: "INHALE", out: "EXHALE", hold: "HOLD" },
+    breath_guide: { in: "INHALE", out: "EXHALE", hold: "HOLD", ready: "READY" },
     scenes: {
       focus: { title: "Deep Focus", subtitle: "Lo-Fi Beats", desc: "For intense work sessions." },
       relax: { title: "Chill Wave", subtitle: "Downtempo", desc: "Unwind and decompress." },
@@ -42,7 +41,7 @@ const TRANSLATIONS = {
     mixer: "混音台",
     timer: "计时器",
     timer_modes: { focus: "专注", breath: "呼吸" },
-    breath_guide: { in: "吸气", out: "呼气", hold: "保持" },
+    breath_guide: { in: "吸气", out: "呼气", hold: "保持", ready: "准备" },
     scenes: {
       focus: { title: "深度专注", subtitle: "Lo-Fi 学习", desc: "为深度工作而生。" },
       relax: { title: "舒缓律动", subtitle: "沙发音乐", desc: "放松身心，卸下疲惫。" },
@@ -61,7 +60,7 @@ const TRANSLATIONS = {
     mixer: "ミキサー",
     timer: "タイマー",
     timer_modes: { focus: "集中", breath: "呼吸" },
-    breath_guide: { in: "吸う", out: "吐く", hold: "止める" },
+    breath_guide: { in: "吸う", out: "吐く", hold: "止める", ready: "準備" },
     scenes: {
       focus: { title: "集中学習", subtitle: "Lo-Fi", desc: "深い集中のために。" },
       relax: { title: "リラックス", subtitle: "チルアウト", desc: "心を落ち着かせる。" },
@@ -145,6 +144,26 @@ const AuroraBackground = memo(({ activeScene, theme }: { activeScene: any, theme
 ));
 AuroraBackground.displayName = "AuroraBackground";
 
+// [新增] 科技感全息光晕组件
+const HolographicHalo = memo(({ isPlaying, theme }: { isPlaying: boolean, theme: string }) => {
+  if (!isPlaying) return <div className={`absolute inset-0 rounded-full border border-dashed opacity-20 transition-all duration-1000 ${theme === 'dark' ? 'border-white' : 'border-black'}`} />;
+
+  return (
+    <>
+      {/* 动态锥形渐变层 1 */}
+      <div className="absolute inset-[-20px] rounded-full animate-[spin_4s_linear_infinite] opacity-60 blur-xl mix-blend-screen pointer-events-none"
+           style={{ background: 'conic-gradient(from 0deg, transparent 0deg, cyan 120deg, magenta 240deg, transparent 360deg)' }} />
+      {/* 动态锥形渐变层 2 (反向旋转) */}
+      <div className="absolute inset-[-20px] rounded-full animate-[spin_7s_linear_infinite_reverse] opacity-40 blur-2xl mix-blend-screen pointer-events-none"
+           style={{ background: 'conic-gradient(from 180deg, transparent 0deg, blue 120deg, purple 240deg, transparent 360deg)' }} />
+      {/* 核心发光圈 */}
+      <div className="absolute inset-0 rounded-full border border-white/20 shadow-[0_0_30px_rgba(255,255,255,0.3)] animate-pulse pointer-events-none" />
+    </>
+  );
+});
+HolographicHalo.displayName = "HolographicHalo";
+
+
 // --- 3. 微组件 ---
 
 const SoundKnob = ({ volume, onChange, icon: Icon, label, activeColor, theme }: any) => {
@@ -201,65 +220,81 @@ const SoundKnob = ({ volume, onChange, icon: Icon, label, activeColor, theme }: 
   );
 };
 
-// [修改点] 呼吸动画彻底重构
-// 1. 尺寸缩小 (w-44) 以适应面板高度
-// 2. 动画改为更柔和的 "Glow" 效果，模拟肺部充气
-// 3. 居中定位更准确
-const BreathingGuide = ({ isRunning, activeSceneColor, onPhaseChange }: { isRunning: boolean, activeSceneColor: string, onPhaseChange: (phase: 'in' | 'out') => void }) => {
-  const [breathPhase, setBreathPhase] = useState<'in' | 'out'>('in');
-
-  useEffect(() => {
-    if (!isRunning) return;
-    onPhaseChange('in');
-    setBreathPhase('in');
-
-    const interval = setInterval(() => {
-      setBreathPhase(p => {
-        const next = p === 'in' ? 'out' : 'in';
-        onPhaseChange(next);
-        return next;
-      });
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [isRunning]);
-
+// [修改点] 呼吸动画：使用 Scale 变换
+const BreathingGuide = ({ isRunning, activeSceneColor, onPhaseChange, phase }: { isRunning: boolean, activeSceneColor: string, onPhaseChange: (phase: 'in' | 'out') => void, phase: 'in' | 'out' }) => {
   if (!isRunning) return null;
 
   const bgClass = activeSceneColor ? activeSceneColor.replace('text-', 'bg-') : 'bg-blue-500';
 
   return (
     <div className="absolute inset-0 z-[-1] flex items-center justify-center pointer-events-none overflow-hidden rounded-[2.5rem]">
-       {/* 核心圆 - 模拟肺部实心部分 */}
        <div
           className={`w-44 aspect-square rounded-full transition-all duration-[4000ms] ease-in-out flex-shrink-0 opacity-10
           ${bgClass}
-          ${breathPhase === 'in' ? 'scale-100' : 'scale-75'}`}
+          ${phase === 'in' ? 'scale-110' : 'scale-75'}`}
        />
-       {/* 扩散光环 - 模拟气息扩散 */}
        <div
           className={`absolute w-44 aspect-square rounded-full transition-all duration-[4000ms] ease-in-out blur-[40px] flex-shrink-0
           ${bgClass}
-          ${breathPhase === 'in' ? 'scale-125 opacity-40' : 'scale-90 opacity-10'}`}
+          ${phase === 'in' ? 'scale-125 opacity-40' : 'scale-90 opacity-10'}`}
        />
     </div>
   );
 };
 
-// [修改点] TimerDisplay 布局微调
-const TimerDisplay = ({ time, isRunning, mode, theme, translations, activeSceneColor }: any) => {
-  const [breathText, setBreathText] = useState(translations.breath_guide.in);
+// [修改点] TimerDisplay：增加倒计时和字号缩放文字
+const TimerDisplay = ({ time, isRunning, mode, theme, translations, activeSceneColor, onStart, onStop }: any) => {
+  const [breathPhase, setBreathPhase] = useState<'in' | 'out'>('in');
+  const [countdown, setCountdown] = useState<number | null>(null);
   const isBreathMode = (mode === 'BREATH' || mode === '呼吸' || mode === '呼吸');
+
+  // 内部 Start 逻辑：先倒计时，再回调父级
+  const handleInternalStart = () => {
+    if (isBreathMode) {
+      setCountdown(3);
+      let count = 3;
+      const timer = setInterval(() => {
+        count--;
+        if (count > 0) {
+          setCountdown(count);
+        } else {
+          clearInterval(timer);
+          setCountdown(null);
+          onStart(); // 真正的开始
+        }
+      }, 1000);
+    } else {
+      onStart();
+    }
+  };
+
+  useEffect(() => {
+    if (!isRunning || !isBreathMode) return;
+    setBreathPhase('in');
+    const interval = setInterval(() => {
+      setBreathPhase(p => (p === 'in' ? 'out' : 'in'));
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isRunning, isBreathMode]);
 
   const shouldShowBreathGuide = isBreathMode && isRunning;
 
   return (
     <div className="text-center relative py-6 w-full flex flex-col items-center justify-center flex-1">
 
+      {/* 倒计时遮罩层 */}
+      {countdown !== null && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm rounded-xl">
+          <span className="text-6xl font-black animate-ping">{countdown}</span>
+        </div>
+      )}
+
       {isBreathMode && (
         <BreathingGuide
-          isRunning={isRunning}
+          isRunning={isRunning && countdown === null}
           activeSceneColor={activeSceneColor}
-          onPhaseChange={(phase) => setBreathText(phase === 'in' ? translations.breath_guide.in : translations.breath_guide.out)}
+          onPhaseChange={() => {}}
+          phase={breathPhase}
         />
       )}
 
@@ -269,11 +304,13 @@ const TimerDisplay = ({ time, isRunning, mode, theme, translations, activeSceneC
         {Math.floor(time / 60).toString().padStart(2, '0')}:{Math.floor(time % 60).toString().padStart(2, '0')}
       </div>
 
-      {/* 标签/引导语 */}
-      <div className="mt-4 h-6 flex items-center justify-center relative z-10 w-full">
+      {/* 动态呼吸文字 - 使用字号和字间距变化 */}
+      <div className="mt-4 h-8 flex items-center justify-center relative z-10 w-full">
          {shouldShowBreathGuide ? (
-           <span className="text-xs font-bold tracking-[0.4em] uppercase animate-pulse transition-all duration-1000 text-current opacity-80">
-             {breathText}
+           <span className={`text-xs font-bold uppercase transition-all duration-[4000ms] ease-in-out flex items-center gap-2
+              ${breathPhase === 'in' ? 'tracking-[0.6em] text-base opacity-100 scale-110' : 'tracking-[0.1em] text-xs opacity-60 scale-90'}
+           `}>
+             {breathPhase === 'in' ? translations.breath_guide.in : translations.breath_guide.out}
            </span>
          ) : (
            <div className="flex items-center justify-center gap-2">
@@ -281,6 +318,11 @@ const TimerDisplay = ({ time, isRunning, mode, theme, translations, activeSceneC
              <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">{mode}</span>
            </div>
          )}
+      </div>
+
+      {/* 控制按钮注入到这里为了布局方便，虽然逻辑上有点耦合 */}
+      <div className="absolute -bottom-14 left-0 right-0 flex gap-4 w-full z-10 px-6">
+          <button className="flex-1 py-3 rounded-2xl bg-current/5 hover:bg-current/10 font-bold text-[10px] tracking-widest uppercase transition-colors pointer-events-none opacity-0">Placeholder</button> {/* 占位 */}
       </div>
     </div>
   );
@@ -295,7 +337,7 @@ export default function ZenFlowRedesignV2() {
   const [viewMode, setViewMode] = useState<'home' | 'player'>('home');
 
   // Player State
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMainPlaying, setIsMainPlaying] = useState(false); // 仅控制主音乐
   const [isLoadingStream, setIsLoadingStream] = useState(false);
   const [currentStreamUrl, setCurrentStreamUrl] = useState("");
   const [currentStreamIndex, setCurrentStreamIndex] = useState(0);
@@ -305,6 +347,7 @@ export default function ZenFlowRedesignV2() {
   // Tools State
   const [activeTab, setActiveTab] = useState<'mixer' | 'timer'>('mixer');
   const [timerState, setTimerState] = useState({ mode: 'focus', time: 25 * 60, initial: 25 * 60, running: false });
+  const [countdownNum, setCountdownNum] = useState<number | null>(null); // 提升倒计时状态
 
   // Refs
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -322,27 +365,33 @@ export default function ZenFlowRedesignV2() {
     return t.greeting.e;
   };
 
+  // 主音乐控制 Effect
   useEffect(() => {
     if (!audioRef.current) return;
     audioRef.current.volume = mainVolume;
-    if (isPlaying && currentStreamUrl) {
-      audioRef.current.play().then(() => setIsLoadingStream(false)).catch(() => setIsPlaying(false));
+    if (isMainPlaying && currentStreamUrl) {
+      audioRef.current.play().then(() => setIsLoadingStream(false)).catch(() => setIsMainPlaying(false));
     } else {
       audioRef.current.pause();
     }
-  }, [isPlaying, currentStreamUrl, mainVolume]);
+  }, [isMainPlaying, currentStreamUrl, mainVolume]);
 
+  // [修改点] 环境音控制 Effect - 独立于 isMainPlaying
   useEffect(() => {
     const refs = { rain: rainRef.current, fire: fireRef.current, birds: birdsRef.current };
     Object.entries(ambientVolumes).forEach(([key, vol]) => {
       const el = refs[key as keyof typeof refs];
       if (el) {
         el.volume = vol;
-        if (isPlaying && vol > 0 && el.paused) el.play().catch(() => {});
-        else if (!isPlaying || vol === 0) el.pause();
+        // 只要音量大于0，就播放。不需要依赖 isMainPlaying
+        if (vol > 0 && el.paused) {
+            el.play().catch(() => {});
+        } else if (vol === 0) {
+            el.pause();
+        }
       }
     });
-  }, [ambientVolumes, isPlaying]);
+  }, [ambientVolumes]); // 依赖项移除 isMainPlaying
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -359,7 +408,7 @@ export default function ZenFlowRedesignV2() {
       setActiveSceneId(scene.id);
       setCurrentStreamIndex(0);
       setCurrentStreamUrl(scene.playlist[0]);
-      setIsPlaying(true);
+      setIsMainPlaying(true);
     }
     setViewMode('player');
   };
@@ -369,10 +418,29 @@ export default function ZenFlowRedesignV2() {
     const nextIndex = (currentStreamIndex + 1) % activeScene.playlist.length;
     setCurrentStreamIndex(nextIndex);
     setCurrentStreamUrl(activeScene.playlist[nextIndex]);
-    setIsPlaying(true);
+    setIsMainPlaying(true);
   };
 
-  const toggleTimer = () => setTimerState(p => ({ ...p, running: !p.running }));
+  const handleStartTimer = () => {
+      if(timerState.mode === 'breath') {
+          // 呼吸模式的321逻辑在组件内部或这里处理
+          setCountdownNum(3);
+          let c = 3;
+          const i = setInterval(() => {
+              c--;
+              setCountdownNum(c);
+              if(c <= 0) {
+                  clearInterval(i);
+                  setCountdownNum(null);
+                  setTimerState(p => ({ ...p, running: true }));
+              }
+          }, 1000);
+      } else {
+          setTimerState(p => ({ ...p, running: true }));
+      }
+  };
+
+  const stopTimer = () => setTimerState(p => ({ ...p, running: false }));
   const resetTimer = () => setTimerState(p => ({ ...p, running: false, time: p.initial }));
 
   const switchTimerMode = () => {
@@ -387,7 +455,6 @@ export default function ZenFlowRedesignV2() {
   };
 
   return (
-    // [修改点] 根容器改为 fixed height + hidden，解决双滚动条问题
     <div className={`relative h-[100dvh] w-full overflow-hidden font-sans select-none transition-colors duration-500 overscroll-none
       ${theme === 'dark' ? 'text-gray-100' : 'text-slate-800'}`}>
 
@@ -396,7 +463,7 @@ export default function ZenFlowRedesignV2() {
       <audio ref={audioRef} src={currentStreamUrl} onPlaying={() => setIsLoadingStream(false)} onWaiting={() => setIsLoadingStream(true)} />
       {AMBIENT_SOUNDS.map(s => <audio key={s.id} ref={s.id === 'rain' ? rainRef : s.id === 'fire' ? fireRef : birdsRef} src={s.url} loop />)}
 
-      {/* Header - 保持 fixed */}
+      {/* Header */}
       <header className="fixed top-0 inset-x-0 z-40 p-6 flex justify-between items-center pointer-events-none">
         <div className="flex items-center gap-3 pointer-events-auto">
            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs border backdrop-blur-md
@@ -411,8 +478,7 @@ export default function ZenFlowRedesignV2() {
         </div>
       </header>
 
-      {/* --- VIEW: HOME (Bento Dashboard) --- */}
-      {/* [修改点] Home View 使用 h-full overflow-y-auto 独立滚动 */}
+      {/* --- VIEW: HOME --- */}
       <main className={`absolute inset-0 z-10 w-full h-full pt-24 px-6 pb-6 transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] overflow-y-auto
          ${viewMode === 'home' ? 'translate-x-0 opacity-100' : '-translate-x-[20%] opacity-0 pointer-events-none'}`}>
 
@@ -460,7 +526,6 @@ export default function ZenFlowRedesignV2() {
       </main>
 
       {/* --- VIEW: PLAYER --- */}
-      {/* [修改点] Player View 保持 fixed，确保覆盖 */}
       <main className={`fixed inset-0 z-20 flex flex-col overflow-y-auto overflow-x-hidden w-full transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]
          ${viewMode === 'player' ? 'translate-x-0 opacity-100' : 'translate-x-[20%] opacity-0 pointer-events-none'}`}>
 
@@ -470,7 +535,7 @@ export default function ZenFlowRedesignV2() {
             <ArrowLeft size={24} />
           </button>
           <div className="flex flex-col items-end text-right pointer-events-none">
-             <span className="text-xs font-bold opacity-40 uppercase tracking-widest">{isPlaying ? t.playing : t.paused}</span>
+             <span className="text-xs font-bold opacity-40 uppercase tracking-widest">{isMainPlaying ? t.playing : t.paused}</span>
              <h2 className="text-xl font-bold">{activeScene ? t.scenes[activeSceneId as keyof typeof t.scenes].title : '...'}</h2>
           </div>
         </div>
@@ -478,23 +543,20 @@ export default function ZenFlowRedesignV2() {
         {/* Center Visualizer */}
         <div className="flex-1 flex flex-col items-center justify-center relative min-h-[350px] flex-shrink-0">
            <div className="relative w-72 h-72 md:w-96 md:h-96 flex items-center justify-center">
-              {viewMode === 'player' && [1, 2, 3].map(i => (
-                <div key={i} className={`absolute inset-0 rounded-full border opacity-20 mix-blend-screen transition-all duration-[3s]
-                  ${theme === 'dark' ? 'border-white/30' : 'border-black/10'}
-                  ${isPlaying ? 'animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite]' : ''}`}
-                  style={{ animationDelay: `${i * 0.8}s` }}
-                />
-              ))}
 
-              <div className={`absolute w-40 h-40 rounded-full blur-[60px] opacity-50 transition-all duration-1000 animate-pulse ${activeScene?.bg}`} />
+              {/* [新增] 科技感光晕 */}
+              <HolographicHalo isPlaying={isMainPlaying} theme={theme} />
+
+              {/* 背景底色 */}
+              <div className={`absolute w-40 h-40 rounded-full blur-[60px] opacity-50 transition-all duration-1000 ${activeScene?.bg}`} />
 
               <div className="flex items-center gap-4 relative z-20">
                 <button
-                  onClick={() => setIsPlaying(!isPlaying)}
+                  onClick={() => setIsMainPlaying(!isMainPlaying)}
                   className={`w-24 h-24 rounded-full flex items-center justify-center backdrop-blur-xl border shadow-xl transition-transform active:scale-90
                      ${theme === 'dark' ? 'bg-white/10 border-white/20' : 'bg-white/60 border-white/50'}`}>
-                  {isLoadingStream && isPlaying ? <Loader2 className="animate-spin" /> :
-                   isPlaying ? <Pause className="fill-current" /> : <Play className="fill-current ml-1" />}
+                  {isLoadingStream && isMainPlaying ? <Loader2 className="animate-spin" /> :
+                   isMainPlaying ? <Pause className="fill-current" /> : <Play className="fill-current ml-1" />}
                 </button>
 
                 {activeScene && activeScene.playlist.length > 1 && (
@@ -502,7 +564,6 @@ export default function ZenFlowRedesignV2() {
                     onClick={handleNextTrack}
                     className={`absolute -right-16 w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md border transition-transform active:scale-90
                        ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white/40 border-white/30 hover:bg-white/60'}`}
-                    aria-label="Next Sound"
                   >
                     <SkipForward size={18} className="opacity-70" />
                   </button>
@@ -549,6 +610,13 @@ export default function ZenFlowRedesignV2() {
                <div className={`absolute inset-0 px-6 pb-6 flex flex-col items-center justify-center gap-4 transition-all duration-500
                   ${activeTab === 'timer' ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-10 pointer-events-none'}`}>
 
+                  {/* 倒计时覆盖层 */}
+                  {countdownNum !== null && countdownNum > 0 && (
+                      <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-3xl">
+                          <span className="text-6xl font-black text-white animate-bounce">{countdownNum}</span>
+                      </div>
+                  )}
+
                   <TimerDisplay
                      time={timerState.time}
                      isRunning={timerState.running}
@@ -566,19 +634,22 @@ export default function ZenFlowRedesignV2() {
                         min="1" max="60"
                         value={Math.floor(timerState.initial / 60)}
                         onChange={(e) => handleTimeSliderChange(parseInt(e.target.value))}
-                        className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-current z-20"
+                        disabled={timerState.running}
+                        className="flex-1 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-current z-20 disabled:opacity-50"
                      />
                      <span className="text-[9px] font-bold opacity-30">60m</span>
                   </div>
 
                   <div className="flex gap-4 w-full z-10">
-                     <button onClick={switchTimerMode} className="flex-1 py-3 rounded-2xl bg-current/5 hover:bg-current/10 font-bold text-[10px] tracking-widest uppercase transition-colors">
+                     <button onClick={switchTimerMode} disabled={timerState.running} className="flex-1 py-3 rounded-2xl bg-current/5 hover:bg-current/10 font-bold text-[10px] tracking-widest uppercase transition-colors disabled:opacity-30">
                        {timerState.mode === 'focus' ? t.timer_modes.breath : t.timer_modes.focus}
                      </button>
-                     <button onClick={toggleTimer} className={`flex-1 py-3 rounded-2xl font-bold text-[10px] tracking-widest uppercase text-white shadow-lg active:scale-95 transition-all
+
+                     <button onClick={timerState.running ? stopTimer : handleStartTimer} className={`flex-1 py-3 rounded-2xl font-bold text-[10px] tracking-widest uppercase text-white shadow-lg active:scale-95 transition-all
                         ${timerState.running ? 'bg-zinc-800' : activeScene?.bg || 'bg-black'}`}>
                         {timerState.running ? 'STOP' : 'START'}
                      </button>
+
                      <button onClick={resetTimer} className="w-12 flex items-center justify-center rounded-2xl bg-current/5 hover:bg-current/10 transition-colors" title="Reset Timer">
                         <RotateCcw size={16} />
                      </button>
