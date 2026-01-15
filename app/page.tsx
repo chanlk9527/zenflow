@@ -201,63 +201,99 @@ const SoundKnob = ({ volume, onChange, icon: Icon, label, activeColor, theme }: 
   );
 };
 
-// 重构后的呼吸引导组件：更直观的视觉引导
-const BreathingGuide = ({ isRunning, theme, text }: { isRunning: boolean, theme: string, text: any }) => {
+// 修改点：呼吸引导组件优化
+// 1. 去除了内部的文字渲染，将文字状态提升，防止重叠
+// 2. 接收 activeSceneColor 以保持颜色一致
+// 3. 强制 aspect-square 确保正圆
+const BreathingGuide = ({ isRunning, theme, activeSceneColor, onPhaseChange }: { isRunning: boolean, theme: string, activeSceneColor: string, onPhaseChange: (phase: 'in' | 'out') => void }) => {
   const [breathPhase, setBreathPhase] = useState<'in' | 'out'>('in');
 
   useEffect(() => {
     if (!isRunning) return;
-    // 4秒吸气，4秒呼气循环
+    onPhaseChange('in');
+    setBreathPhase('in');
+
     const interval = setInterval(() => {
-      setBreathPhase(p => p === 'in' ? 'out' : 'in');
+      setBreathPhase(p => {
+        const next = p === 'in' ? 'out' : 'in';
+        onPhaseChange(next);
+        return next;
+      });
     }, 4000);
     return () => clearInterval(interval);
   }, [isRunning]);
 
   if (!isRunning) return null;
 
+  // 提取颜色类名，例如 bg-purple-500
+  const bgClass = activeSceneColor ? activeSceneColor.replace('text-', 'bg-') : 'bg-blue-500';
+  const borderClass = activeSceneColor ? activeSceneColor.replace('text-', 'border-') : 'border-blue-500';
+
   return (
     <div className="absolute inset-0 z-[-1] flex items-center justify-center pointer-events-none">
-       {/* 背景引导圈 - 缩放动画 */}
+       {/* 背景引导圈 - 修正为 aspect-square 确保是正圆 */}
        <div
-          className={`w-64 h-64 rounded-full border-2 transition-all duration-[4000ms] ease-in-out
-          ${theme === 'dark' ? 'border-white/20 bg-white/5' : 'border-blue-500/20 bg-blue-500/5'}
+          className={`w-64 aspect-square rounded-full border-2 transition-all duration-[4000ms] ease-in-out flex-shrink-0
+          ${theme === 'dark' ? 'bg-white/5' : 'bg-black/5'}
+          ${borderClass} ${theme === 'dark' ? 'border-opacity-20' : 'border-opacity-30'}
           ${breathPhase === 'in' ? 'scale-110 opacity-100' : 'scale-75 opacity-50'}`}
        />
-       {/* 核心圆 - 与外圈相反或协同 */}
+       {/* 核心光晕 - 颜色跟随播放器 */}
        <div
-          className={`absolute w-64 h-64 rounded-full transition-all duration-[4000ms] ease-in-out blur-3xl opacity-20
-          ${theme === 'dark' ? 'bg-teal-400' : 'bg-blue-400'}
+          className={`absolute w-64 aspect-square rounded-full transition-all duration-[4000ms] ease-in-out blur-3xl opacity-20 flex-shrink-0
+          ${bgClass}
           ${breathPhase === 'in' ? 'scale-100' : 'scale-50'}`}
        />
-       {/* 文字提示 */}
-       <div className="absolute top-[70%] text-center animate-pulse duration-1000">
-          <span className="text-xs font-bold tracking-[0.3em] opacity-60">
-            {breathPhase === 'in' ? text.in : text.out}
-          </span>
-       </div>
     </div>
   );
 };
 
-const TimerDisplay = ({ time, isRunning, mode, theme, translations, activeSceneColor }: any) => (
-  <div className="text-center relative py-8">
-    {/* 仅在呼吸模式且运行时显示引导 */}
-    {(mode === 'BREATH' || mode === '呼吸' || mode === '呼吸') && (
-      <BreathingGuide isRunning={isRunning} theme={theme} text={translations.breath_guide} />
-    )}
+// 修改点：TimerDisplay
+// 1. 动态切换显示的文字，避免重叠
+const TimerDisplay = ({ time, isRunning, mode, theme, translations, activeSceneColor }: any) => {
+  const [breathText, setBreathText] = useState(translations.breath_guide.in);
+  const isBreathMode = (mode === 'BREATH' || mode === '呼吸' || mode === '呼吸'); // 兼容各语言
 
-    <div className={`text-6xl font-mono font-bold tracking-tighter tabular-nums leading-none relative z-10 transition-colors duration-300
-        ${(mode === 'BREATH' || mode === '呼吸') && isRunning ? 'opacity-90' : 'opacity-100'}`}>
-      {Math.floor(time / 60).toString().padStart(2, '0')}:{Math.floor(time % 60).toString().padStart(2, '0')}
-    </div>
+  // 当呼吸模式运行时，用动态文字替换静态的“呼吸”标签
+  const shouldShowBreathGuide = isBreathMode && isRunning;
 
-    <div className="mt-2 flex items-center justify-center gap-2 relative z-10">
-       <span className={`w-2 h-2 rounded-full transition-colors duration-300 ${isRunning ? (activeSceneColor ? activeSceneColor.replace('text-', 'bg-') : 'bg-green-500') : 'bg-gray-400'}`}></span>
-       <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">{mode}</span>
+  return (
+    <div className="text-center relative py-8 w-full flex flex-col items-center">
+
+      {/* 呼吸背景圆圈 */}
+      {isBreathMode && (
+        <BreathingGuide
+          isRunning={isRunning}
+          theme={theme}
+          activeSceneColor={activeSceneColor}
+          onPhaseChange={(phase) => setBreathText(phase === 'in' ? translations.breath_guide.in : translations.breath_guide.out)}
+        />
+      )}
+
+      {/* 时间数字 */}
+      <div className={`text-6xl font-mono font-bold tracking-tighter tabular-nums leading-none relative z-10 transition-colors duration-300 select-none
+          ${shouldShowBreathGuide ? 'opacity-90' : 'opacity-100'}`}>
+        {Math.floor(time / 60).toString().padStart(2, '0')}:{Math.floor(time % 60).toString().padStart(2, '0')}
+      </div>
+
+      {/* 标签区域：根据状态互斥显示 */}
+      <div className="mt-3 h-6 flex items-center justify-center relative z-10 w-full">
+         {shouldShowBreathGuide ? (
+           // 状态1：呼吸运行时，显示动态提示
+           <span className="text-sm font-bold tracking-[0.4em] uppercase animate-pulse transition-all duration-1000 text-current opacity-80">
+             {breathText}
+           </span>
+         ) : (
+           // 状态2：默认显示模式名称
+           <div className="flex items-center justify-center gap-2">
+             <span className={`w-2 h-2 rounded-full transition-colors duration-300 ${isRunning ? (activeSceneColor ? activeSceneColor.replace('text-', 'bg-') : 'bg-green-500') : 'bg-gray-400'}`}></span>
+             <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">{mode}</span>
+           </div>
+         )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // --- 4. 主程序 ---
 
@@ -271,7 +307,7 @@ export default function ZenFlowRedesignV2() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingStream, setIsLoadingStream] = useState(false);
   const [currentStreamUrl, setCurrentStreamUrl] = useState("");
-  const [currentStreamIndex, setCurrentStreamIndex] = useState(0); // 新增：记录当前播放源索引
+  const [currentStreamIndex, setCurrentStreamIndex] = useState(0);
   const [mainVolume, setMainVolume] = useState(0.8);
   const [ambientVolumes, setAmbientVolumes] = useState<{ [key: string]: number }>({ rain: 0, fire: 0, birds: 0 });
 
@@ -340,13 +376,12 @@ export default function ZenFlowRedesignV2() {
     setViewMode('player');
   };
 
-  // 新增：切换下一首音源
   const handleNextTrack = () => {
     if (!activeScene) return;
     const nextIndex = (currentStreamIndex + 1) % activeScene.playlist.length;
     setCurrentStreamIndex(nextIndex);
     setCurrentStreamUrl(activeScene.playlist[nextIndex]);
-    setIsPlaying(true); // 切换后自动播放
+    setIsPlaying(true);
   };
 
   const toggleTimer = () => setTimerState(p => ({ ...p, running: !p.running }));
@@ -364,7 +399,6 @@ export default function ZenFlowRedesignV2() {
   };
 
   return (
-    // ROOT: 添加 overscroll-none 防止橡皮筋效果
     <div className={`relative min-h-[100dvh] w-full overflow-hidden font-sans select-none transition-colors duration-500 overscroll-none
       ${theme === 'dark' ? 'text-gray-100' : 'text-slate-800'}`}>
 
@@ -399,7 +433,6 @@ export default function ZenFlowRedesignV2() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[160px] md:auto-rows-[180px] pb-10">
-            {/* Featured Card */}
             <button onClick={() => enterScene(SCENES_CONFIG[0])}
               className={`md:col-span-2 row-span-2 rounded-[2rem] p-8 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.01] active:scale-[0.99] relative overflow-hidden group
                 ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-white/60 border border-white/40 shadow-sm'}`}>
@@ -416,7 +449,6 @@ export default function ZenFlowRedesignV2() {
                </div>
             </button>
 
-            {/* Smaller Cards */}
             {SCENES_CONFIG.slice(1).map((scene, i) => (
               <button key={scene.id} onClick={() => enterScene(scene)}
                 className={`rounded-[2rem] p-6 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group
@@ -438,13 +470,11 @@ export default function ZenFlowRedesignV2() {
       </main>
 
       {/* --- VIEW: PLAYER --- */}
-      {/* 修复：添加 w-full 和 overflow-x-hidden 防止水平滑动 */}
       <main className={`fixed inset-0 z-20 flex flex-col overflow-y-auto overflow-x-hidden w-full transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]
          ${viewMode === 'player' ? 'translate-x-0 opacity-100' : 'translate-x-[20%] opacity-0 pointer-events-none'}`}>
 
         {/* Top Controls */}
         <div className="w-full max-w-md mx-auto px-6 pt-24 pb-4 flex justify-between items-end flex-shrink-0 relative z-30">
-          {/* 修复：增大点击热区，提高层级 */}
           <button onClick={() => setViewMode('home')} className="p-4 -ml-4 rounded-full hover:bg-white/10 transition-colors z-50">
             <ArrowLeft size={24} />
           </button>
@@ -457,14 +487,18 @@ export default function ZenFlowRedesignV2() {
         {/* Center Visualizer */}
         <div className="flex-1 flex flex-col items-center justify-center relative min-h-[350px] flex-shrink-0">
            <div className="relative w-72 h-72 md:w-96 md:h-96 flex items-center justify-center">
-              {/* Dynamic Rings */}
+
+              {/* 修改点：加强播放器光效动感 */}
               {viewMode === 'player' && [1, 2, 3].map(i => (
-                <div key={i} className={`absolute inset-0 rounded-full border border-current opacity-5 transition-all duration-[3s]
-                  ${isPlaying ? 'animate-[ping_4s_cubic-bezier(0,0,0.2,1)_infinite]' : ''}`}
-                  style={{ animationDelay: `${i * 1}s` }}
+                <div key={i} className={`absolute inset-0 rounded-full border opacity-20 mix-blend-screen transition-all duration-[3s]
+                  ${theme === 'dark' ? 'border-white/30' : 'border-black/10'}
+                  ${isPlaying ? 'animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite]' : ''}`}
+                  style={{ animationDelay: `${i * 0.8}s` }} // 加快一点频率
                 />
               ))}
-              <div className={`absolute w-40 h-40 rounded-full blur-[60px] opacity-40 transition-all duration-1000 ${activeScene?.bg}`} />
+
+              {/* 光晕背景增加 pulse 动画 */}
+              <div className={`absolute w-40 h-40 rounded-full blur-[60px] opacity-50 transition-all duration-1000 animate-pulse ${activeScene?.bg}`} />
 
               <div className="flex items-center gap-4 relative z-20">
                 {/* Play Button */}
@@ -476,7 +510,7 @@ export default function ZenFlowRedesignV2() {
                    isPlaying ? <Pause className="fill-current" /> : <Play className="fill-current ml-1" />}
                 </button>
 
-                {/* 新增：切歌按钮 (只有当播放列表 > 1 时显示) */}
+                {/* Next Track Button */}
                 {activeScene && activeScene.playlist.length > 1 && (
                   <button
                     onClick={handleNextTrack}
@@ -529,7 +563,6 @@ export default function ZenFlowRedesignV2() {
                <div className={`absolute inset-0 px-6 pb-6 flex flex-col items-center justify-center gap-4 transition-all duration-500
                   ${activeTab === 'timer' ? 'opacity-100 translate-x-0 pointer-events-auto' : 'opacity-0 translate-x-10 pointer-events-none'}`}>
 
-                  {/* 传入 translations 用于呼吸文字 */}
                   <TimerDisplay
                      time={timerState.time}
                      isRunning={timerState.running}
@@ -560,7 +593,6 @@ export default function ZenFlowRedesignV2() {
                         ${timerState.running ? 'bg-zinc-800' : activeScene?.bg || 'bg-black'}`}>
                         {timerState.running ? 'STOP' : 'START'}
                      </button>
-                     {/* 修复：改为重置图标，并明确功能 */}
                      <button onClick={resetTimer} className="w-12 flex items-center justify-center rounded-2xl bg-current/5 hover:bg-current/10 transition-colors" title="Reset Timer">
                         <RotateCcw size={16} />
                      </button>
