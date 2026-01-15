@@ -167,7 +167,6 @@ const AppleStyleMesh = memo(({ isPlaying, activeSceneId, theme }: { isPlaying: b
     : ELEVATED_PALETTES.focus;
 
   return (
-    // 使用 fixed 确保背景固定，不随内容滚动
     <div className={`fixed inset-0 z-0 flex items-center justify-center transition-opacity duration-[2000ms] overflow-hidden pointer-events-none ${isPlaying ? 'opacity-100' : 'opacity-30'}`}>
        <style>{`
          @keyframes blob-bounce {
@@ -225,21 +224,29 @@ const SoundKnob = ({ volume, onChange, icon: Icon, label, activeColor, theme }: 
   const barRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Fallback color in case activeScene is not yet loaded or passed
+  const fillColor = activeColor || (theme === 'dark' ? 'bg-white' : 'bg-black');
+
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
-    updateVolume(e.clientY);
-    window.addEventListener('pointermove', handleGlobalMove);
-    window.addEventListener('pointerup', handleGlobalUp);
-  };
-
-  const handleGlobalMove = (e: PointerEvent) => {
+    // Directly capture element for immediate feedback
+    if (barRef.current) {
+       barRef.current.setPointerCapture(e.pointerId);
+    }
     updateVolume(e.clientY);
   };
 
-  const handleGlobalUp = () => {
+  const handlePointerMove = (e: React.PointerEvent) => {
+     if(isDragging) {
+         updateVolume(e.clientY);
+     }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
     setIsDragging(false);
-    window.removeEventListener('pointermove', handleGlobalMove);
-    window.removeEventListener('pointerup', handleGlobalUp);
+    if (barRef.current) {
+        barRef.current.releasePointerCapture(e.pointerId);
+    }
   };
 
   const updateVolume = (clientY: number) => {
@@ -255,11 +262,13 @@ const SoundKnob = ({ volume, onChange, icon: Icon, label, activeColor, theme }: 
       <div
         ref={barRef}
         onPointerDown={handlePointerDown}
-        className={`relative w-12 h-32 rounded-full p-1 flex flex-col justify-end overflow-hidden cursor-ns-resize transition-colors duration-300
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        className={`relative w-12 h-32 rounded-full p-1 flex flex-col justify-end overflow-hidden cursor-ns-resize transition-colors duration-300 touch-none
           ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'}`}
       >
         <div
-          className={`w-full rounded-full transition-all duration-75 ${activeColor} ${isDragging ? 'opacity-100' : 'opacity-80'}`}
+          className={`w-full rounded-full transition-all duration-75 ${fillColor} ${isDragging ? 'opacity-100' : 'opacity-80'}`}
           style={{ height: `${volume * 100}%` }}
         />
         <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none transition-colors duration-300
@@ -388,7 +397,7 @@ export default function ZenFlowRedesignV2() {
       }
     };
     checkTime();
-  }, []); // 仅在组件挂载时执行一次
+  }, []);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -407,16 +416,32 @@ export default function ZenFlowRedesignV2() {
     }
   }, [isMainPlaying, currentStreamUrl, mainVolume]);
 
+  // --- FIXED: Ambient Sounds Playback Logic ---
+  // Improved reliability for playing mixer sounds independently
   useEffect(() => {
     const refs = { rain: rainRef.current, fire: fireRef.current, birds: birdsRef.current };
+
     Object.entries(ambientVolumes).forEach(([key, vol]) => {
       const el = refs[key as keyof typeof refs];
       if (el) {
+        // Always set volume first
         el.volume = vol;
-        if (vol > 0 && el.paused) {
-            el.play().catch(() => {});
-        } else if (vol === 0) {
-            el.pause();
+
+        // Handle Play/Pause based on volume presence
+        if (vol > 0) {
+           if (el.paused) {
+             const playPromise = el.play();
+             if (playPromise !== undefined) {
+                 playPromise.catch(error => {
+                     // Catch play interruption errors (common when dragging sliders rapidly)
+                     // Console log suppressed to keep console clean for user
+                 });
+             }
+           }
+        } else {
+           if (!el.paused) {
+             el.pause();
+           }
         }
       }
     });
@@ -488,8 +513,22 @@ export default function ZenFlowRedesignV2() {
 
       <NoiseOverlay />
       <AuroraBackground activeScene={activeScene} theme={theme} />
+
+      {/* Main Stream Audio */}
       <audio ref={audioRef} src={currentStreamUrl} onPlaying={() => setIsLoadingStream(false)} onWaiting={() => setIsLoadingStream(true)} />
-      {AMBIENT_SOUNDS.map(s => <audio key={s.id} ref={s.id === 'rain' ? rainRef : s.id === 'fire' ? fireRef : birdsRef} src={s.url} loop />)}
+
+      {/* Ambient Sounds - Fixed for Independent Playback */}
+      {AMBIENT_SOUNDS.map(s => (
+        <audio
+            key={s.id}
+            ref={s.id === 'rain' ? rainRef : s.id === 'fire' ? fireRef : birdsRef}
+            src={s.url}
+            loop
+            playsInline // Crucial for mobile independence
+            preload="auto"
+            crossOrigin="anonymous"
+        />
+      ))}
 
       {/* Header */}
       <header className="fixed top-0 inset-x-0 z-40 p-6 flex justify-between items-center pointer-events-none">
@@ -563,7 +602,6 @@ export default function ZenFlowRedesignV2() {
       {/*
          --- 修复1: 移动端滚动修复 ---
          将 fixed 布局改为 overflow-y-auto 的容器，内部使用 min-h-[100dvh] 撑开高度
-         这样当屏幕较矮时，内容可以被滚动查看，而不是被截断。
       */}
       <main className={`fixed inset-0 z-20 w-full overflow-y-auto overflow-x-hidden transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]
          ${viewMode === 'player' ? 'translate-x-0 opacity-100' : 'translate-x-[20%] opacity-0 pointer-events-none'}`}>
@@ -585,7 +623,7 @@ export default function ZenFlowRedesignV2() {
               </div>
             </div>
 
-            {/* Center Play Button Area - 允许 flex-grow 占据空间 */}
+            {/* Center Play Button Area */}
             <div className="flex-1 flex flex-col items-center justify-center relative min-h-[300px] z-30 py-8">
                <div className="relative w-64 h-64 md:w-96 md:h-96 flex items-center justify-center">
                   <div className="flex items-center gap-4 relative z-20">
@@ -610,7 +648,7 @@ export default function ZenFlowRedesignV2() {
                </div>
             </div>
 
-            {/* Bottom Command Deck - 保持 flex-shrink-0 但有足够 padding 适配移动端 */}
+            {/* Bottom Command Deck */}
             <div className="w-full px-6 pb-24 md:pb-12 flex-shrink-0 relative z-30">
               <div className={`max-w-md mx-auto rounded-[2.5rem] overflow-hidden backdrop-blur-3xl border shadow-2xl transition-all duration-500
                  ${theme === 'dark' ? 'bg-[#121212]/60 border-white/10 shadow-black/50' : 'bg-white/50 border-white/40 shadow-xl'}`}>
@@ -639,7 +677,8 @@ export default function ZenFlowRedesignV2() {
                           label={s.label}
                           volume={ambientVolumes[s.id]}
                           onChange={(v: number) => setAmbientVolumes(p => ({...p, [s.id]: v}))}
-                          activeColor={activeScene?.bg} theme={theme}
+                          activeColor={activeScene?.bg}
+                          theme={theme}
                         />
                       ))}
                    </div>
