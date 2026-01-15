@@ -71,52 +71,31 @@ const TRANSLATIONS = {
   }
 };
 
-const SCENES_CONFIG = [
-  {
-    id: "focus",
-    icon: <Zap size={24} />,
-    color: "text-purple-400",
-    bg: "bg-purple-500",
-    gradient: "from-purple-900/80 via-indigo-900/60 to-blue-900/60",
-    playlist: ["https://stream.laut.fm/lofi"]
+// 定义每个场景的复杂流体配色方案
+// base: 基础背景色
+// orbs: 三个浮动球体的颜色（通常包含：主色深色、互补色、高光色）
+const SCENE_PALETTES: Record<string, { base: string, orbs: [string, string, string] }> = {
+  focus: {
+    base: "bg-[#240b36]", //以此为底
+    orbs: ["bg-purple-600", "bg-indigo-500", "bg-fuchsia-400"] // 紫色系混入蓝紫和粉紫
   },
-  {
-    id: "relax",
-    icon: <Wind size={24} />,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500",
-    gradient: "from-emerald-900/80 via-teal-900/60 to-cyan-900/60",
-    playlist: ["https://ice2.somafm.com/groovesalad-128-mp3"]
+  relax: {
+    base: "bg-[#0f2027]",
+    orbs: ["bg-emerald-600", "bg-teal-500", "bg-cyan-300"] // 绿色系混入青色和荧光绿
   },
-  {
-    id: "cafe",
-    icon: <Coffee size={24} />,
-    color: "text-amber-400",
-    bg: "bg-amber-500",
-    gradient: "from-amber-900/80 via-orange-900/60 to-red-900/60",
-    playlist: [
-      "https://listen.181fm.com/181-classicalguitar_128k.mp3",
-      "https://ice4.somafm.com/lush-128-mp3",
-      "https://ice2.somafm.com/illstreet-128-mp3"
-    ]
+  cafe: {
+    base: "bg-[#3e1e14]",
+    orbs: ["bg-amber-700", "bg-orange-600", "bg-rose-500"] // 琥珀色系混入深橙和玫瑰红
   },
-  {
-    id: "sleep",
-    icon: <Moon size={24} />,
-    color: "text-indigo-300",
-    bg: "bg-indigo-400",
-    gradient: "from-indigo-900/80 via-slate-900/60 to-black/80",
-    playlist: ["https://pianosolo.streamguys1.com/live"]
+  sleep: {
+    base: "bg-[#0b1026]",
+    orbs: ["bg-indigo-800", "bg-slate-700", "bg-violet-900"] // 深蓝系混入灰蓝和深紫
   },
-  {
-    id: "creative",
-    icon: <Sparkles size={24} />,
-    color: "text-pink-400",
-    bg: "bg-pink-500",
-    gradient: "from-pink-900/80 via-rose-900/60 to-purple-900/60",
-    playlist: ["https://ice2.somafm.com/beatblender-128-mp3"]
-  },
-];
+  creative: {
+    base: "bg-[#2c001e]",
+    orbs: ["bg-pink-600", "bg-rose-500", "bg-purple-500"] // 粉色系混入玫瑰和紫色
+  }
+};
 
 const AMBIENT_SOUNDS = [
   { id: 'rain', icon: CloudRain, label: "RAIN", url: "https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg" },
@@ -144,61 +123,72 @@ const AuroraBackground = memo(({ activeScene, theme }: { activeScene: any, theme
 ));
 AuroraBackground.displayName = "AuroraBackground";
 
-// [REPLACED] High-End Fluid Mesh Gradient (Apple Music Style)
-const HolographicHalo = memo(({ isPlaying, theme }: { isPlaying: boolean, theme: string }) => {
-  if (!isPlaying) {
-    return (
-      <div className={`absolute inset-0 rounded-full border border-dashed opacity-20 transition-all duration-1000 ${theme === 'dark' ? 'border-white' : 'border-black'}`} />
-    );
-  }
+// [NEW] Apple Music Style Fluid Mesh Visualizer
+const FluidMeshVisualizer = memo(({ isPlaying, activeSceneId, theme }: { isPlaying: boolean, activeSceneId: string | null, theme: string }) => {
+  // 获取当前场景的配色，如果没有选中则默认使用 Focus 的配色
+  const palette = activeSceneId && SCENE_PALETTES[activeSceneId]
+    ? SCENE_PALETTES[activeSceneId]
+    : SCENE_PALETTES.focus;
 
   return (
-    <div className="absolute inset-[-30px] rounded-full pointer-events-none z-[-1] overflow-visible">
-       {/* Inject styles for organic movement that Tailwind utilities can't perfectly replicate */}
+    <div className={`absolute inset-[-60px] md:inset-[-80px] rounded-full z-[-1] overflow-hidden transition-opacity duration-1000 ${isPlaying ? 'opacity-100' : 'opacity-30'}`}>
+
+       {/* 注入流体动画的关键帧样式 */}
        <style jsx>{`
-         @keyframes blob-bounce {
-           0%, 100% { transform: translate(0, 0) scale(1); }
-           25% { transform: translate(15px, -15px) scale(1.1); }
-           50% { transform: translate(-10px, 15px) scale(0.95); }
-           75% { transform: translate(-15px, -5px) scale(1.05); }
+         @keyframes drift-1 {
+           0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+           33% { transform: translate(30px, -50px) rotate(120deg) scale(1.2); }
+           66% { transform: translate(-20px, 40px) rotate(240deg) scale(0.9); }
+           100% { transform: translate(0, 0) rotate(360deg) scale(1); }
          }
-         @keyframes blob-spin {
-           0% { transform: rotate(0deg) scale(1); }
-           50% { transform: rotate(180deg) scale(1.2); }
-           100% { transform: rotate(360deg) scale(1); }
+         @keyframes drift-2 {
+           0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+           33% { transform: translate(-40px, 30px) rotate(-90deg) scale(1.1); }
+           66% { transform: translate(30px, -20px) rotate(-180deg) scale(0.95); }
+           100% { transform: translate(0, 0) rotate(-360deg) scale(1); }
          }
-         @keyframes blob-flow {
-           0% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; transform: rotate(0deg); }
-           33% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
-           66% { border-radius: 30% 70% 50% 50% / 30% 30% 60% 70%; }
-           100% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; transform: rotate(360deg); }
+         @keyframes drift-3 {
+           0% { transform: translate(0, 0) scale(1); }
+           50% { transform: translate(0, 20px) scale(1.3); }
+           100% { transform: translate(0, 0) scale(1); }
+         }
+         @keyframes breathe-container {
+           0%, 100% { transform: scale(1); }
+           50% { transform: scale(1.02); }
+         }
+         .animate-fluid-play * {
+            animation-play-state: running;
+         }
+         .animate-fluid-pause * {
+            animation-play-state: paused;
          }
        `}</style>
 
-       {/* Soft Blur Container */}
-       <div className="absolute inset-0 filter blur-[40px] opacity-70">
-          {/* Orb 1: Blue/Indigo - Moves organically */}
-          <div className="absolute top-0 -left-4 w-3/4 h-3/4 bg-blue-500/60 rounded-full mix-blend-screen animate-[blob-bounce_13s_ease-in-out_infinite]"
-               style={{ animationDelay: '0s' }} />
+       {/* 容器背景色：确保光球融合时有底色 */}
+       <div className={`absolute inset-0 transition-colors duration-1000 ${palette.base} opacity-60`} />
 
-          {/* Orb 2: Purple/Pink - Moves organically opposingly */}
-          <div className="absolute -bottom-4 -right-4 w-3/4 h-3/4 bg-purple-500/60 rounded-full mix-blend-screen animate-[blob-bounce_17s_ease-in-out_infinite_reverse]"
-               style={{ animationDelay: '2s' }} />
+       {/* 模糊层：核心魔法，极高的模糊度融合所有色块 */}
+       <div className={`absolute inset-0 filter blur-[60px] md:blur-[90px] mix-blend-hard-light saturate-150 ${isPlaying ? 'animate-fluid-play' : 'animate-fluid-pause'}`}>
 
-          {/* Orb 3: Cyan/Teal - Rotates slowly in the center to create fusion */}
-          <div className="absolute top-1/4 left-1/4 w-2/3 h-2/3 bg-cyan-400/40 rounded-full mix-blend-screen animate-[blob-spin_25s_linear_infinite]" />
+          {/* Orb 1: 主律动球 - 顺时针大范围游走 */}
+          <div className={`absolute top-0 -left-10 w-[70%] h-[70%] rounded-full opacity-80 mix-blend-screen animate-[drift-1_18s_ease-in-out_infinite] transition-colors duration-1000 ${palette.orbs[0]}`} />
 
-          {/* Orb 4: Dynamic Highlight - Fast fluid morphing */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/2 h-1/2 bg-indigo-300/50 mix-blend-overlay"
-               style={{ animation: 'blob-flow 15s linear infinite' }} />
+          {/* Orb 2: 互补色球 - 逆时针游走，制造碰撞色 */}
+          <div className={`absolute bottom-0 -right-10 w-[70%] h-[70%] rounded-full opacity-80 mix-blend-screen animate-[drift-2_23s_ease-in-out_infinite] transition-colors duration-1000 ${palette.orbs[1]}`} />
+
+          {/* Orb 3: 高光球 - 位于中心，负责产生亮斑和深度 */}
+          <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50%] h-[50%] rounded-full opacity-60 mix-blend-overlay animate-[drift-3_15s_ease-in-out_infinite] transition-colors duration-1000 ${palette.orbs[2]}`} />
        </div>
 
-       {/* Subtle Core Pulse - Keeps the center grounded */}
-       <div className="absolute inset-2 rounded-full border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.15)] animate-pulse" />
+       {/* 纹理叠加：增加一点噪点，让渐变看起来更有质感而非廉价的模糊 */}
+       <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+
+       {/* 呼吸边框：当音乐播放时，整个容器会有极微小的呼吸感 */}
+       <div className={`absolute inset-0 rounded-full border border-white/10 ${isPlaying ? 'animate-[breathe-container_8s_ease-in-out_infinite]' : ''}`} />
     </div>
   );
 });
-HolographicHalo.displayName = "HolographicHalo";
+FluidMeshVisualizer.displayName = "FluidMeshVisualizer";
 
 
 // --- 3. 微组件 ---
@@ -570,11 +560,12 @@ export default function ZenFlowRedesignV2() {
         <div className="flex-1 flex flex-col items-center justify-center relative min-h-[350px] flex-shrink-0">
            <div className="relative w-72 h-72 md:w-96 md:h-96 flex items-center justify-center">
 
-              {/* [UPDATED] Apple Style Fluid Halo */}
-              <HolographicHalo isPlaying={isMainPlaying} theme={theme} />
-
-              {/* Background Glow */}
-              <div className={`absolute w-40 h-40 rounded-full blur-[60px] opacity-50 transition-all duration-1000 ${activeScene?.bg}`} />
+              {/* [UPDATED] 使用新的流体视觉组件 */}
+              <FluidMeshVisualizer
+                    isPlaying={isMainPlaying}
+                    activeSceneId={activeSceneId}
+                    theme={theme}
+              />
 
               <div className="flex items-center gap-4 relative z-20">
                 <button
