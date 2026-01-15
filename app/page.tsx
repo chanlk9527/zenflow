@@ -118,29 +118,23 @@ const SCENES_CONFIG = [
   },
 ];
 
-// [NEW] 复杂流体配色方案 (Apple Music Style)
-// base: 基础背景色
-// orbs: 三个浮动球体的颜色（通常包含：主色深色、互补色、高光色）
-const SCENE_PALETTES: Record<string, { base: string, orbs: [string, string, string] }> = {
+// [REFINED] 极柔和配色表
+// 降低了不透明度，使用了更相近的色系来确保融合
+const SOFT_PALETTES: Record<string, { orbs: [string, string, string] }> = {
   focus: {
-    base: "bg-[#240b36]",
-    orbs: ["bg-purple-600", "bg-indigo-500", "bg-fuchsia-400"]
+    orbs: ["bg-violet-500/40", "bg-indigo-400/30", "bg-fuchsia-500/30"]
   },
   relax: {
-    base: "bg-[#0f2027]",
-    orbs: ["bg-emerald-600", "bg-teal-500", "bg-cyan-300"]
+    orbs: ["bg-teal-500/30", "bg-emerald-400/30", "bg-cyan-500/20"]
   },
   cafe: {
-    base: "bg-[#3e1e14]",
-    orbs: ["bg-amber-700", "bg-orange-600", "bg-rose-500"]
+    orbs: ["bg-orange-500/30", "bg-amber-600/30", "bg-rose-400/20"]
   },
   sleep: {
-    base: "bg-[#0b1026]",
-    orbs: ["bg-indigo-800", "bg-slate-700", "bg-violet-900"]
+    orbs: ["bg-indigo-900/50", "bg-blue-800/40", "bg-slate-700/40"]
   },
   creative: {
-    base: "bg-[#2c001e]",
-    orbs: ["bg-pink-600", "bg-rose-500", "bg-purple-500"]
+    orbs: ["bg-pink-500/30", "bg-purple-500/30", "bg-rose-400/30"]
   }
 };
 
@@ -153,89 +147,89 @@ const AMBIENT_SOUNDS = [
 // --- 2. 视觉组件 ---
 
 const NoiseOverlay = memo(() => (
-  <div className="fixed inset-0 pointer-events-none z-[50] opacity-[0.03] mix-blend-overlay will-change-transform"
-       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}>
+  <div className="fixed inset-0 pointer-events-none z-[50] opacity-[0.035] mix-blend-overlay will-change-transform"
+       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}>
   </div>
 ));
 NoiseOverlay.displayName = "NoiseOverlay";
 
 const AuroraBackground = memo(({ activeScene, theme }: { activeScene: any, theme: string }) => (
   <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none transform-gpu">
-    <div className={`absolute inset-0 transition-colors duration-1000 ${theme === 'dark' ? 'bg-[#050505]' : 'bg-[#f2f4f6]'}`} />
-    <div className={`absolute top-[-20%] left-[-10%] w-[100vw] h-[100vw] rounded-full blur-[120px] opacity-30 animate-[pulse_8s_ease-in-out_infinite] transition-all duration-1000 transform-gpu
-      ${activeScene ? activeScene.gradient.split(' ')[0] : (theme === 'dark' ? 'bg-indigo-900' : 'bg-blue-200')}`} />
-    <div className={`absolute bottom-[-20%] right-[-10%] w-[100vw] h-[100vw] rounded-full blur-[120px] opacity-30 animate-[pulse_10s_ease-in-out_infinite_reverse] transition-all duration-1000 transform-gpu
-      ${activeScene ? activeScene.gradient.split(' ')[2] : (theme === 'dark' ? 'bg-purple-900' : 'bg-pink-200')}`} />
+    {/* 纯色背景底色，避免黑色带来的死寂感 */}
+    <div className={`absolute inset-0 transition-colors duration-1000 ${theme === 'dark' ? 'bg-[#080808]' : 'bg-[#f4f6f8]'}`} />
+
+    {/* 仅在Home模式下显示的极微弱背景，Player模式下由Mesh接管 */}
+    {!activeScene && (
+       <div className={`absolute inset-0 opacity-20 transition-all duration-1000 ${theme === 'dark' ? 'bg-gradient-to-b from-blue-900/20 to-transparent' : 'bg-gradient-to-b from-blue-100/50 to-transparent'}`} />
+    )}
   </div>
 ));
 AuroraBackground.displayName = "AuroraBackground";
 
-// [NEW] Apple Music Style Fluid Mesh Visualizer
-const FluidMeshVisualizer = memo(({ isPlaying, activeSceneId, theme }: { isPlaying: boolean, activeSceneId: string | null, theme: string }) => {
-  // 获取当前场景的配色，如果没有选中则默认使用 Focus 的配色
-  const palette = activeSceneId && SCENE_PALETTES[activeSceneId]
-    ? SCENE_PALETTES[activeSceneId]
-    : SCENE_PALETTES.focus;
+// [RE-ENGINEERED] Apple Style Ultra-Soft Mesh
+// 核心改动：
+// 1. mask-image: 径向遮罩，彻底消除边界。
+// 2. blur-3xl + scale: 极大的模糊半径。
+// 3. Low Opacity: 低透明度叠加，避免高饱和。
+const AppleStyleMesh = memo(({ isPlaying, activeSceneId }: { isPlaying: boolean, activeSceneId: string | null }) => {
+  const palette = activeSceneId && SOFT_PALETTES[activeSceneId]
+    ? SOFT_PALETTES[activeSceneId]
+    : SOFT_PALETTES.focus;
 
   return (
-    <div className={`absolute inset-[-60px] md:inset-[-80px] rounded-full z-[-1] overflow-hidden transition-opacity duration-1000 ${isPlaying ? 'opacity-100' : 'opacity-30'}`}>
+    <div className={`absolute inset-0 z-[-1] flex items-center justify-center transition-opacity duration-[2000ms] ${isPlaying ? 'opacity-100' : 'opacity-20'}`}>
 
-       {/* 注入流体动画的关键帧样式 */}
        <style>{`
-         @keyframes drift-1 {
-           0% { transform: translate(0, 0) rotate(0deg) scale(1); }
-           33% { transform: translate(30px, -50px) rotate(120deg) scale(1.2); }
-           66% { transform: translate(-20px, 40px) rotate(240deg) scale(0.9); }
-           100% { transform: translate(0, 0) rotate(360deg) scale(1); }
+         @keyframes flow-1 {
+           0% { transform: translate3d(-20%, -20%, 0) scale(1); }
+           33% { transform: translate3d(20%, 10%, 0) scale(1.1); }
+           66% { transform: translate3d(-10%, 20%, 0) scale(0.9); }
+           100% { transform: translate3d(-20%, -20%, 0) scale(1); }
          }
-         @keyframes drift-2 {
-           0% { transform: translate(0, 0) rotate(0deg) scale(1); }
-           33% { transform: translate(-40px, 30px) rotate(-90deg) scale(1.1); }
-           66% { transform: translate(30px, -20px) rotate(-180deg) scale(0.95); }
-           100% { transform: translate(0, 0) rotate(-360deg) scale(1); }
+         @keyframes flow-2 {
+           0% { transform: translate3d(20%, 20%, 0) scale(1); }
+           33% { transform: translate3d(-20%, -10%, 0) scale(1.2); }
+           66% { transform: translate3d(10%, -20%, 0) scale(0.85); }
+           100% { transform: translate3d(20%, 20%, 0) scale(1); }
          }
-         @keyframes drift-3 {
-           0% { transform: translate(0, 0) scale(1); }
-           50% { transform: translate(0, 20px) scale(1.3); }
-           100% { transform: translate(0, 0) scale(1); }
+         @keyframes flow-3 {
+           0% { transform: translate3d(0, 0, 0) scale(1); }
+           50% { transform: translate3d(0, 10%, 0) scale(1.3); }
+           100% { transform: translate3d(0, 0, 0) scale(1); }
          }
-         @keyframes breathe-container {
-           0%, 100% { transform: scale(1); }
-           50% { transform: scale(1.02); }
+         .mesh-container {
+            /* 关键：使用遮罩让边缘完全透明，消除矩形边界感 */
+            mask-image: radial-gradient(circle at center, black 0%, transparent 70%);
+            -webkit-mask-image: radial-gradient(circle at center, black 0%, transparent 70%);
          }
-         .animate-fluid-play * {
+         .animate-flow-slow * {
             animation-play-state: running;
+            will-change: transform; /* 开启GPU加速 */
          }
-         .animate-fluid-pause * {
+         .animate-flow-paused * {
             animation-play-state: paused;
          }
        `}</style>
 
-       {/* 容器背景色：确保光球融合时有底色 */}
-       <div className={`absolute inset-0 transition-colors duration-1000 ${palette.base} opacity-60`} />
+       {/* 容器比可视区域大，以容纳漂移 */}
+       <div className={`relative w-[150%] h-[150%] mesh-container ${isPlaying ? 'animate-flow-slow' : 'animate-flow-paused'}`}>
+          {/* 使用 filter blur-[100px] 甚至更高来实现极柔和效果 */}
+          <div className="absolute inset-0 blur-[100px] md:blur-[140px] saturate-150">
 
-       {/* 模糊层：核心魔法，极高的模糊度融合所有色块 */}
-       <div className={`absolute inset-0 filter blur-[60px] md:blur-[90px] mix-blend-hard-light saturate-150 ${isPlaying ? 'animate-fluid-play' : 'animate-fluid-pause'}`}>
+              {/* Blob 1: 巨大的主色块 */}
+              <div className={`absolute top-1/4 left-1/4 w-2/3 h-2/3 rounded-full mix-blend-screen animate-[flow-1_25s_ease-in-out_infinite] transition-colors duration-[3000ms] ${palette.orbs[0]}`} />
 
-          {/* Orb 1: 主律动球 - 顺时针大范围游走 */}
-          <div className={`absolute top-0 -left-10 w-[70%] h-[70%] rounded-full opacity-80 mix-blend-screen animate-[drift-1_18s_ease-in-out_infinite] transition-colors duration-1000 ${palette.orbs[0]}`} />
+              {/* Blob 2: 巨大的副色块 */}
+              <div className={`absolute bottom-1/4 right-1/4 w-2/3 h-2/3 rounded-full mix-blend-screen animate-[flow-2_30s_ease-in-out_infinite] transition-colors duration-[3000ms] ${palette.orbs[1]}`} />
 
-          {/* Orb 2: 互补色球 - 逆时针游走，制造碰撞色 */}
-          <div className={`absolute bottom-0 -right-10 w-[70%] h-[70%] rounded-full opacity-80 mix-blend-screen animate-[drift-2_23s_ease-in-out_infinite] transition-colors duration-1000 ${palette.orbs[1]}`} />
-
-          {/* Orb 3: 高光球 - 位于中心，负责产生亮斑和深度 */}
-          <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50%] h-[50%] rounded-full opacity-60 mix-blend-overlay animate-[drift-3_15s_ease-in-out_infinite] transition-colors duration-1000 ${palette.orbs[2]}`} />
+              {/* Blob 3: 中心高光块 */}
+              <div className={`absolute top-1/3 left-1/3 w-1/2 h-1/2 rounded-full mix-blend-plus-lighter animate-[flow-3_20s_ease-in-out_infinite] transition-colors duration-[3000ms] ${palette.orbs[2]}`} />
+          </div>
        </div>
-
-       {/* 纹理叠加：增加一点噪点，让渐变看起来更有质感而非廉价的模糊 */}
-       <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
-
-       {/* 呼吸边框：当音乐播放时，整个容器会有极微小的呼吸感 */}
-       <div className={`absolute inset-0 rounded-full border border-white/10 ${isPlaying ? 'animate-[breathe-container_8s_ease-in-out_infinite]' : ''}`} />
     </div>
   );
 });
-FluidMeshVisualizer.displayName = "FluidMeshVisualizer";
+AppleStyleMesh.displayName = "AppleStyleMesh";
 
 // --- 3. 微组件 ---
 
@@ -273,8 +267,8 @@ const SoundKnob = ({ volume, onChange, icon: Icon, label, activeColor, theme }: 
       <div
         ref={barRef}
         onPointerDown={handlePointerDown}
-        className={`relative w-12 h-32 rounded-full p-1 flex flex-col justify-end overflow-hidden cursor-ns-resize
-          ${theme === 'dark' ? 'bg-white/5' : 'bg-black/5'}`}
+        className={`relative w-12 h-32 rounded-full p-1 flex flex-col justify-end overflow-hidden cursor-ns-resize transition-colors duration-300
+          ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'}`}
       >
         <div
           className={`w-full rounded-full transition-all duration-75 ${activeColor} ${isDragging ? 'opacity-100' : 'opacity-80'}`}
@@ -295,7 +289,6 @@ const SoundKnob = ({ volume, onChange, icon: Icon, label, activeColor, theme }: 
 
 const BreathingGuide = ({ isRunning, activeSceneColor, onPhaseChange, phase }: { isRunning: boolean, activeSceneColor: string, onPhaseChange: (phase: 'in' | 'out') => void, phase: 'in' | 'out' }) => {
   if (!isRunning) return null;
-
   const bgClass = activeSceneColor ? activeSceneColor.replace('text-', 'bg-') : 'bg-blue-500';
 
   return (
@@ -305,11 +298,6 @@ const BreathingGuide = ({ isRunning, activeSceneColor, onPhaseChange, phase }: {
           ${bgClass}
           ${phase === 'in' ? 'scale-110' : 'scale-75'}`}
        />
-       <div
-          className={`absolute w-44 aspect-square rounded-full transition-all duration-[4000ms] ease-in-out blur-[40px] flex-shrink-0
-          ${bgClass}
-          ${phase === 'in' ? 'scale-125 opacity-40' : 'scale-90 opacity-10'}`}
-       />
     </div>
   );
 };
@@ -318,25 +306,6 @@ const TimerDisplay = ({ time, isRunning, mode, theme, translations, activeSceneC
   const [breathPhase, setBreathPhase] = useState<'in' | 'out'>('in');
   const [countdown, setCountdown] = useState<number | null>(null);
   const isBreathMode = (mode === 'BREATH' || mode === '呼吸' || mode === '呼吸');
-
-  const handleInternalStart = () => {
-    if (isBreathMode) {
-      setCountdown(3);
-      let count = 3;
-      const timer = setInterval(() => {
-        count--;
-        if (count > 0) {
-          setCountdown(count);
-        } else {
-          clearInterval(timer);
-          setCountdown(null);
-          onStart();
-        }
-      }, 1000);
-    } else {
-      onStart();
-    }
-  };
 
   useEffect(() => {
     if (!isRunning || !isBreathMode) return;
@@ -351,7 +320,6 @@ const TimerDisplay = ({ time, isRunning, mode, theme, translations, activeSceneC
 
   return (
     <div className="text-center relative py-6 w-full flex flex-col items-center justify-center flex-1">
-
       {countdown !== null && (
         <div className="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm rounded-xl">
           <span className="text-6xl font-black animate-ping">{countdown}</span>
@@ -385,10 +353,6 @@ const TimerDisplay = ({ time, isRunning, mode, theme, translations, activeSceneC
              <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">{mode}</span>
            </div>
          )}
-      </div>
-
-      <div className="absolute -bottom-14 left-0 right-0 flex gap-4 w-full z-10 px-6">
-          <button className="flex-1 py-3 rounded-2xl bg-current/5 hover:bg-current/10 font-bold text-[10px] tracking-widest uppercase transition-colors pointer-events-none opacity-0">Placeholder</button>
       </div>
     </div>
   );
@@ -518,7 +482,7 @@ export default function ZenFlowRedesignV2() {
 
   return (
     <div className={`relative h-[100dvh] w-full overflow-hidden font-sans select-none transition-colors duration-500 overscroll-none
-      ${theme === 'dark' ? 'text-gray-100' : 'text-slate-800'}`}>
+      ${theme === 'dark' ? 'text-gray-100 bg-[#050505]' : 'text-slate-800 bg-[#f4f6f8]'}`}>
 
       <NoiseOverlay />
       <AuroraBackground activeScene={activeScene} theme={theme} />
@@ -528,8 +492,8 @@ export default function ZenFlowRedesignV2() {
       {/* Header */}
       <header className="fixed top-0 inset-x-0 z-40 p-6 flex justify-between items-center pointer-events-none">
         <div className="flex items-center gap-3 pointer-events-auto">
-           <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs border backdrop-blur-md
-              ${theme === 'dark' ? 'bg-white/10 border-white/20' : 'bg-black/10 border-black/10'}`}>
+           <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs border backdrop-blur-md transition-colors
+              ${theme === 'dark' ? 'bg-white/10 border-white/20' : 'bg-black/5 border-black/5'}`}>
               ZF
            </div>
            {viewMode === 'home' && <span className="font-bold tracking-widest text-xs uppercase opacity-50">{t.app_title}</span>}
@@ -602,17 +566,15 @@ export default function ZenFlowRedesignV2() {
           </div>
         </div>
 
-        {/* Center Visualizer */}
+        {/* Center Visualizer Area */}
         <div className="flex-1 flex flex-col items-center justify-center relative min-h-[350px] flex-shrink-0">
-           <div className="relative w-72 h-72 md:w-96 md:h-96 flex items-center justify-center">
 
-              {/* [UPDATED] Fluid Mesh Visualizer */}
-              <FluidMeshVisualizer
-                  isPlaying={isMainPlaying}
-                  activeSceneId={activeSceneId}
-                  theme={theme}
-              />
+           {/* [NEW] The Ultra Soft Apple Mesh Visualizer */}
+           <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
+               <AppleStyleMesh isPlaying={isMainPlaying} activeSceneId={activeSceneId} />
+           </div>
 
+           <div className="relative w-72 h-72 md:w-96 md:h-96 flex items-center justify-center z-10">
               <div className="flex items-center gap-4 relative z-20">
                 <button
                   onClick={() => setIsMainPlaying(!isMainPlaying)}
