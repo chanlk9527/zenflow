@@ -169,7 +169,12 @@ export default function ZenFlowRedesignV2() {
       ${theme === 'dark' ? 'text-gray-100 bg-[#050505]' : 'text-slate-800 bg-[#f4f6f8]'}`}>
 
       <NoiseOverlay />
-      <AuroraBackground activeScene={activeScene} theme={theme} />
+
+      <AuroraBackground
+               activeSceneId={activeSceneId}
+               theme={theme}
+               viewMode={viewMode}
+            />
 
       {/* Audio Elements */}
       <audio ref={audioRef} src={currentStreamUrl} onPlaying={() => setIsLoadingStream(false)} onWaiting={() => setIsLoadingStream(true)} />
@@ -193,63 +198,70 @@ export default function ZenFlowRedesignV2() {
       />
 
       {/* --- VIEW: HOME --- */}
-      <main className={`absolute inset-0 z-10 w-full h-full pt-24 px-6 pb-6 transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] overflow-y-auto
-         ${viewMode === 'home' ? 'translate-x-0 opacity-100' : '-translate-x-[20%] opacity-0 pointer-events-none'}`}>
+       <main className={`absolute inset-0 z-10 w-full h-full pt-24 px-6 pb-6 transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] overflow-y-auto
+               ${viewMode === 'home' ? 'translate-x-0 opacity-100' : '-translate-x-[20%] opacity-0 pointer-events-none'}`}>
 
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8 md:mb-12 animate-fade-in-up">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-2">{getGreeting()}.</h1>
-            <p className="opacity-50 text-sm md:text-base font-medium">{t.tagline}</p>
-          </div>
+              <div className="max-w-4xl mx-auto">
+                {/* 标题区域 */}
+                <div className="mb-8 md:mb-12 animate-fade-in-up">
+                  {/* 给标题加一点混合模式，让背景色透出一点点 */}
+                  <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-2 mix-blend-overlay opacity-90">{getGreeting()}.</h1>
+                  <p className="opacity-50 text-sm md:text-base font-medium">{t.tagline}</p>
+                </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[160px] md:auto-rows-[180px] pb-24">
-            {/* Featured Scene (First One) */}
-            <button onClick={() => enterScene(SCENES_CONFIG[0])}
-              className={`md:col-span-2 row-span-2 rounded-[2rem] p-8 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.01] active:scale-[0.99] relative overflow-hidden group
-                ${theme === 'dark'
-                   ? 'bg-[#121212] border border-white/5 hover:bg-white/5 hover:border-white/10 hover:shadow-xl hover:shadow-white/5'
-                   : 'bg-white/60 border border-white/40 shadow-sm'}`}>
-               <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-700 ${SCENES_CONFIG[0].gradient}`} />
-               <div className="relative z-10">
-                 <div className="inline-flex p-3 rounded-xl bg-white/10 backdrop-blur-md mb-4 text-purple-300">
-                    <Zap size={24} />
-                 </div>
-                 <h2 className="text-3xl font-bold">{t.scenes.focus.title}</h2>
-                 <p className="opacity-60 mt-2 max-w-xs">{t.scenes.focus.desc}</p>
-               </div>
-               <div className="relative z-10 flex items-center gap-2 opacity-50 text-xs font-bold tracking-widest uppercase group-hover:opacity-100 transition-opacity">
-                  <Play size={12} fill="currentColor" /> Play Now
-               </div>
-            </button>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[160px] md:auto-rows-[180px] pb-24">
 
-            {/* Other Scenes */}
-            {SCENES_CONFIG.slice(1).map((scene, i) => (
-              <button key={scene.id} onClick={() => enterScene(scene)}
-                className={`rounded-[2rem] p-6 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group
-                  ${theme === 'dark'
-                     ? 'bg-[#121212] border border-white/5 hover:bg-white/5 hover:border-white/10 hover:shadow-lg hover:shadow-white/5'
-                     : 'bg-white/60 border border-white/40 shadow-sm'}
-                  ${i === 1 ? 'md:row-span-2' : ''}
-                `}>
-                 <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-20 transition-opacity duration-500 ${scene.gradient}`} />
-                 <div className="relative z-10 flex justify-between items-start">
-                    <div className={`p-2 rounded-lg bg-white/10 backdrop-blur-sm ${scene.color}`}>{scene.icon}</div>
-                 </div>
-                 <div className="relative z-10">
-                   <h3 className="text-lg font-bold leading-tight">{t.scenes[scene.id as keyof typeof t.scenes].title}</h3>
-                   <p className="text-[10px] uppercase font-bold tracking-wider opacity-40 mt-1">{t.scenes[scene.id as keyof typeof t.scenes].subtitle}</p>
-                 </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </main>
+                  {/*
+                     💎 卡片样式升级：
+                     为了配合流体背景，我们将卡片的背景设为半透明 (backdrop-blur)。
+                     这样背景的流体会在卡片后面模糊地流动，非常高级。
+                  */}
+                  <button onClick={() => enterScene(SCENES_CONFIG[0])}
+                    className={`md:col-span-2 row-span-2 rounded-[2rem] p-8 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.01] active:scale-[0.99] relative overflow-hidden group backdrop-blur-xl
+                      ${theme === 'dark'
+                         ? 'bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20' // Dark模式：极淡的白
+                         : 'bg-white/40 border border-white/60 hover:bg-white/60' // Light模式：半透明磨砂
+                      }`}>
+
+                     {/* 这里的 gradient 可以保留，作为叠加层 */}
+                     <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-40 transition-opacity duration-700 ${SCENES_CONFIG[0].gradient}`} />
+
+                     <div className="relative z-10">
+                       <div className="inline-flex p-3 rounded-xl bg-white/20 backdrop-blur-md mb-4 text-white shadow-sm">
+                          <Zap size={24} />
+                       </div>
+                       <h2 className="text-3xl font-bold">{t.scenes.focus.title}</h2>
+                       <p className="opacity-60 mt-2 max-w-xs">{t.scenes.focus.desc}</p>
+                     </div>
+                     {/* ... Play Now button ... */}
+                  </button>
+
+                  {/* 其他小卡片同理，增加 backdrop-blur */}
+                  {SCENES_CONFIG.slice(1).map((scene, i) => (
+                    <button key={scene.id} onClick={() => enterScene(scene)}
+                      className={`rounded-[2rem] p-6 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group backdrop-blur-lg
+                        ${theme === 'dark'
+                           ? 'bg-white/5 border border-white/10 hover:bg-white/10'
+                           : 'bg-white/40 border border-white/60 hover:bg-white/60'}
+                        ${i === 1 ? 'md:row-span-2' : ''}
+                      `}>
+                       <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-30 transition-opacity duration-500 ${scene.gradient}`} />
+                       <div className="relative z-10 flex justify-between items-start">
+                          <div className={`p-2 rounded-lg bg-white/20 backdrop-blur-md text-white`}>{scene.icon}</div>
+                       </div>
+                       <div className="relative z-10">
+                         <h3 className="text-lg font-bold leading-tight">{t.scenes[scene.id as keyof typeof t.scenes].title}</h3>
+                       </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </main>
 
       {/* --- VIEW: PLAYER --- */}
       <main className={`fixed inset-0 z-20 w-full overflow-y-auto overflow-x-hidden transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]
          ${viewMode === 'player' ? 'translate-x-0 opacity-100' : 'translate-x-[20%] opacity-0 pointer-events-none'}`}>
 
-        <AuroraMesh isPlaying={isMainPlaying} activeSceneId={activeSceneId} theme={theme} />
 
         <div className="flex flex-col min-h-[100dvh] w-full relative">
 
