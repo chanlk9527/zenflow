@@ -3,6 +3,7 @@ import React, { useState, useRef } from "react";
 interface SoundKnobProps {
   volume: number;
   onChange: (val: number) => void;
+  // 👇 1. 这里定义了类型
   onInteract?: () => void;
   icon: any;
   label: string;
@@ -10,13 +11,20 @@ interface SoundKnobProps {
   theme: string;
 }
 
-const SoundKnob = ({ volume, onChange, icon: Icon, label, activeColor, theme }: SoundKnobProps) => {
+const SoundKnob = ({
+  volume,
+  onChange,
+  onInteract, // 👈 2. 关键修正：这里必须解构出来，之前漏了！
+  icon: Icon,
+  label,
+  activeColor,
+  theme
+}: SoundKnobProps) => {
   const barRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const handlePointerDown = (e: React.PointerEvent) => {
-
-    // 👇 核心修改：一按下去，立刻通知父组件播放
+    // 👇 3. 现在这里就能正常使用了
     if (onInteract) {
         onInteract();
     }
