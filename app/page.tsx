@@ -147,6 +147,15 @@ export default function ZenFlowRedesignV2() {
   const handleToggleLang = () => setLang(l => l === 'en' ? 'cn' : l === 'cn' ? 'jp' : 'en');
   const handleToggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
+   // 👇 新增：专门用于处理手机端的手势解锁音频
+  const handleKnobInteraction = (id: string) => {
+      const el = ambientRefs.current[id];
+      if (el && el.paused) {
+        // 这里的 play() 是在 pointerDown 事件调用栈中直接执行的
+        // 手机浏览器会认为这是合法的“用户行为”
+        el.play().catch(e => console.log("Mobile autoplay handler error:", e));
+      }
+  };
   // --- Render ---
 
   return (
@@ -303,6 +312,7 @@ export default function ZenFlowRedesignV2() {
                           label={s.label}
                           volume={ambientVolumes[s.id]}
                           onChange={(v: number) => setAmbientVolumes(p => ({...p, [s.id]: v}))}
+                          onInteract={() => handleKnobInteraction(s.id)}
                           activeColor={activeScene?.bg || "bg-gray-400"} theme={theme}
                         />
                       ))}

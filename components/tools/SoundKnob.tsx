@@ -3,6 +3,7 @@ import React, { useState, useRef } from "react";
 interface SoundKnobProps {
   volume: number;
   onChange: (val: number) => void;
+  onInteract?: () => void;
   icon: any;
   label: string;
   activeColor: string;
@@ -14,6 +15,12 @@ const SoundKnob = ({ volume, onChange, icon: Icon, label, activeColor, theme }: 
   const [isDragging, setIsDragging] = useState(false);
 
   const handlePointerDown = (e: React.PointerEvent) => {
+
+    // 👇 核心修改：一按下去，立刻通知父组件播放
+    if (onInteract) {
+        onInteract();
+    }
+
     setIsDragging(true);
     updateVolume(e.clientY);
     window.addEventListener('pointermove', handleGlobalMove);
