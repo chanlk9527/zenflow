@@ -304,7 +304,7 @@ export default function ZenFlowRedesignV2() {
                           label={s.label}
                           volume={ambientVolumes[s.id]}
                           onChange={(v: number) => setAmbientVolumes(p => ({...p, [s.id]: v}))}
-                          activeColor={activeScene?.bg} theme={theme}
+                          activeColor={activeScene?.bg || "bg-gray-400"} theme={theme}
                         />
                       ))}
                    </div>
@@ -325,7 +325,7 @@ export default function ZenFlowRedesignV2() {
                          mode={t.timer_modes[timerState.mode as keyof typeof t.timer_modes]}
                          theme={theme}
                          translations={t}
-                         activeSceneColor={activeScene?.color || ''}
+                         activeSceneColor={activeScene?.color || "text-gray-400"}
                       />
 
                       <div className="w-full flex items-center gap-3 px-2 z-10">
