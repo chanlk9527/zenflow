@@ -150,10 +150,15 @@ export default function ZenFlowRedesignV2() {
    // 👇 新增：专门用于处理手机端的手势解锁音频
   const handleKnobInteraction = (id: string) => {
       const el = ambientRefs.current[id];
-      if (el && el.paused) {
-        // 这里的 play() 是在 pointerDown 事件调用栈中直接执行的
-        // 手机浏览器会认为这是合法的“用户行为”
-        el.play().catch(e => console.log("Mobile autoplay handler error:", e));
+      if (el) {
+             // 核心修复：如果还没加载，强制先加载
+             if (el.readyState === 0) {
+               el.load();
+             }
+             // 尝试播放（解除手机自动播放限制）
+             if (el.paused) {
+               el.play().catch(e => console.log("Mobile autoplay handler:", e));
+             }
       }
   };
   // --- Render ---
@@ -173,7 +178,7 @@ export default function ZenFlowRedesignV2() {
             ref={(el) => { ambientRefs.current[s.id] = el; }}
             src={s.url}
             loop
-            preload="metadata"
+            preload="none"
         />
       ))}
 
