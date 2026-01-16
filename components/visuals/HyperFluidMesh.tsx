@@ -2,124 +2,110 @@ import React, { memo } from "react";
 import { ELEVATED_PALETTES } from "@/data/constants";
 
 interface Props {
+  isPlaying: boolean;
   activeSceneId: string | null;
   theme: 'light' | 'dark';
-  viewMode: 'home' | 'player';
 }
 
-const HyperFluidMesh = memo(({ activeSceneId, theme, viewMode }: Props) => {
-
-  // 🎨 修复点 1: 加强主页配色的对比度
-  // 之前的颜色太淡，被混合模式吃掉了。现在使用更明显的颜色。
-  const homePalette = {
-    orbs: [
-      // Light模式: 用 -300/-400 级，而不是 -100 (Multiply模式下颜色越深越明显)
-      // Dark模式: 用 -600/-500 级，而不是 -900 (Screen模式下颜色越亮越明显)
-      theme === 'dark' ? 'bg-indigo-600' : 'bg-blue-300',
-      theme === 'dark' ? 'bg-purple-600' : 'bg-indigo-300',
-      theme === 'dark' ? 'bg-teal-600'   : 'bg-purple-200',
-    ]
-  };
-
-  // 决定使用哪套颜色
-  const palette = (viewMode === 'player' && activeSceneId && ELEVATED_PALETTES[activeSceneId])
+const HyperFluidMesh = memo(({ isPlaying, activeSceneId, theme }: Props) => {
+  const palette = activeSceneId && ELEVATED_PALETTES[activeSceneId]
     ? ELEVATED_PALETTES[activeSceneId]
-    : homePalette;
+    : ELEVATED_PALETTES.focus;
 
   return (
-    <div
-      className={`fixed top-0 left-0 w-full h-full z-0 overflow-hidden pointer-events-none select-none transition-colors duration-[1500ms]
-      ${theme === 'dark' ? 'bg-[#050505]' : 'bg-[#f0f2f5]'}`} // Light背景稍微灰一点点，让白色高光更明显
+    // 修复点：
+    // 1. 不再使用 inset-0，而是使用负定位 (-top-[10%])
+    // 2. 宽高设为 120%，确保覆盖所有回弹区域
+    // 3. 加上 will-change-transform 确保持续渲染
+    <div className={`fixed -top-[10%] -left-[10%] w-[120%] h-[120%] z-0 overflow-hidden pointer-events-none select-none transition-colors duration-700
+      ${theme === 'dark' ? 'bg-black' : 'bg-white'}`}
+      style={{ willChange: 'transform' }} // 强制 GPU 渲染整个背景层
     >
+
       <style>{`
-        .mesh-container {
-            width: 140vw; /* 加大尺寸，防止移动时露边 */
-            height: 140dvh;
-            position: absolute;
-            top: -20%;
-            left: -20%;
-            will-change: transform;
+        /* 激进的流动动画 (Aggressive Flow) */
+        @keyframes flow-one {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30vw, -40vh) scale(1.5); }
+          66% { transform: translate(-20vw, 20vh) scale(0.8); }
+          100% { transform: translate(0px, 0px) scale(1); }
         }
 
-        /* 修复点 2: 调整主页动画轨迹，让它们更靠近中心 */
-        @keyframes flow-one {
-          0% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(15vw, -10vh) scale(1.2); }
-          66% { transform: translate(-10vw, 15vh) scale(0.9); }
-          100% { transform: translate(0, 0) scale(1); }
-        }
         @keyframes flow-two {
-          0% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(-15vw, -10vh) scale(1.1); }
-          66% { transform: translate(15vw, 10vh) scale(0.8); }
-          100% { transform: translate(0, 0) scale(1); }
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(-30vw, -20vh) scale(1.3); }
+          66% { transform: translate(25vw, 25vh) scale(0.6); }
+          100% { transform: translate(0px, 0px) scale(1); }
         }
+
         @keyframes flow-three {
-          0% { transform: translate(0, 0) rotate(0deg) scale(1); }
-          50% { transform: translate(0, 5vh) rotate(180deg) scale(1.2); }
-          100% { transform: translate(0, 0) rotate(360deg) scale(1); }
+          0% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
+          50% { transform: translate(0vw, 30vh) scale(1.6) rotate(180deg); }
+          100% { transform: translate(0px, 0px) scale(1) rotate(360deg); }
         }
+
+        /* 快速形变 (Quick Morph) */
         @keyframes liquid-morph {
             0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
             50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
             100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
         }
 
-        .speed-home { animation-duration: 25s, 30s !important; }
-        .speed-player { animation-duration: 12s, 10s !important; }
+        .animate-flow-1 { animation: flow-one 12s infinite ease-in-out, liquid-morph 8s infinite ease-in-out; }
+        .animate-flow-2 { animation: flow-two 15s infinite ease-in-out, liquid-morph 10s infinite ease-in-out reverse; }
+        .animate-flow-3 { animation: flow-three 10s infinite ease-in-out, liquid-morph 12s infinite ease-in-out; }
 
-        .animate-flow-1 { animation: flow-one infinite ease-in-out, liquid-morph infinite ease-in-out; }
-        .animate-flow-2 { animation: flow-two infinite ease-in-out, liquid-morph infinite ease-in-out reverse; }
-        .animate-flow-3 { animation: flow-three infinite ease-in-out, liquid-morph infinite ease-in-out; }
+        .gpu-layer {
+            will-change: transform, border-radius;
+            transform-style: preserve-3d;
+            backface-visibility: hidden; /* 防止移动端闪烁 */
+        }
 
-        .gpu-layer { will-change: transform, border-radius; transform-style: preserve-3d; backface-visibility: hidden; }
+        .paused-anim * { animation-play-state: paused !important; }
       `}</style>
 
-      {/* 噪点层 */}
-      <div className="absolute inset-0 opacity-[0.05] z-30 mix-blend-overlay pointer-events-none"
-        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+      {/* 噪点层：同样铺满 120% */}
+      <div
+        className="absolute inset-0 opacity-[0.08] z-30 pointer-events-none mix-blend-overlay"
+        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
       />
 
-      <div className="mesh-container">
-        {/*
-           🎨 修复点 3: 可见性调整
-           Home: opacity 提高到 0.9 (之前是 0.7)，saturate 1.2 (保持柔和但可见)
-           Player: saturate 2.2 (保持强烈的极光感)
-        */}
-        <div className={`absolute inset-0 filter blur-[80px] contrast-125 transition-all duration-[2000ms]
-            ${viewMode === 'home' ? 'saturate-[1.2] opacity-90' : 'saturate-[2.2] opacity-100'}
+      <div className={`relative w-full h-full transition-opacity duration-1000
+        ${isPlaying ? 'opacity-100' : 'opacity-50'}
+        ${isPlaying ? '' : 'paused-anim'}`}>
+
+        {/* 核心混合层 */}
+        <div className={`absolute inset-0 filter blur-[80px] saturate-200 contrast-125
             ${theme === 'dark' ? 'mix-blend-hard-light' : 'mix-blend-multiply'}`}>
 
-          {/* Orb 1 */}
-          <div className={`gpu-layer absolute top-[-5%] left-[-5%] w-[80vw] h-[80vw] rounded-full animate-flow-1 transition-colors duration-[2500ms]
-             ${viewMode === 'home' ? 'speed-home' : 'speed-player'}
+          {/* Blob 1 */}
+          <div className={`gpu-layer absolute top-0 left-[-20%] w-[120vw] h-[100vw] opacity-80 animate-flow-1
              ${palette.orbs[0]}
              ${theme === 'dark' ? 'mix-blend-screen' : 'mix-blend-multiply'}`}
           />
 
-          {/* Orb 2 */}
-          <div className={`gpu-layer absolute bottom-[-5%] right-[-5%] w-[80vw] h-[80vw] rounded-full animate-flow-2 transition-colors duration-[2500ms]
-             ${viewMode === 'home' ? 'speed-home' : 'speed-player'}
+          {/* Blob 2 */}
+          <div className={`gpu-layer absolute bottom-0 right-[-20%] w-[120vw] h-[100vw] opacity-80 animate-flow-2
              ${palette.orbs[1]}
              ${theme === 'dark' ? 'mix-blend-screen' : 'mix-blend-lighten'}`}
           />
 
-          {/* Orb 3 */}
-          <div className={`gpu-layer absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] rounded-full animate-flow-3 transition-colors duration-[2500ms]
-             ${viewMode === 'home' ? 'speed-home' : 'speed-player'}
+          {/* Blob 3 */}
+          <div className={`gpu-layer absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[100vw] opacity-70 animate-flow-3
              ${palette.orbs[2]}
              ${theme === 'dark' ? 'mix-blend-plus-lighter' : 'mix-blend-overlay'}`}
           />
+
         </div>
       </div>
 
-      {/* 玻璃光泽 */}
-      <div className={`absolute inset-0 z-20 pointer-events-none transition-opacity duration-1000
-         ${viewMode === 'home' ? 'opacity-50' : 'opacity-80'}
+      {/* 高光玻璃层 */}
+      <div className={`absolute inset-0 z-20 pointer-events-none
          ${theme === 'dark'
             ? 'bg-gradient-to-tr from-black/20 via-transparent to-white/5'
-            : 'bg-gradient-to-tr from-transparent via-white/40 to-white/60'}`}
+            : 'bg-gradient-to-tr from-transparent via-white/20 to-white/40'}`}
       />
+
     </div>
   );
 });
