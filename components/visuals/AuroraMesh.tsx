@@ -7,7 +7,7 @@ interface Props {
   theme: 'light' | 'dark';
 }
 
-const FluidAuroraMesh = memo(({ isPlaying, activeSceneId, theme }: Props) => {
+const AuroraMesh = memo(({ isPlaying, activeSceneId, theme }: Props) => {
   const palette = activeSceneId && ELEVATED_PALETTES[activeSceneId]
     ? ELEVATED_PALETTES[activeSceneId]
     : ELEVATED_PALETTES.focus;
