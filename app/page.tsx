@@ -3,14 +3,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Play, Pause, SkipForward, Loader2, ArrowLeft, RotateCcw, SlidersHorizontal, Timer as TimerIcon, Zap } from "lucide-react";
 
-// Imports from local files
+// Types & Data
 import { LangKey, TimerState } from "@/types";
 import { TRANSLATIONS, SCENES_CONFIG, AMBIENT_SOUNDS } from "@/data/constants";
 
+// Components
 import NoiseOverlay from "@/components/visuals/NoiseOverlay";
-import AuroraBackground from "@/components/visuals/AuroraBackground";
-import AppleStyleMesh from "@/components/visuals/AppleStyleMesh";
-import AuroraMesh from "@/components/visuals/AuroraMesh";
+import HyperFluidMesh from "@/components/visuals/HyperFluidMesh"; // 确保引用的是新组件
 import SoundKnob from "@/components/tools/SoundKnob";
 import TimerDisplay from "@/components/tools/TimerDisplay";
 import Header from "@/components/layout/Header";
@@ -42,7 +41,6 @@ export default function ZenFlowRedesignV2() {
   const activeScene = SCENES_CONFIG.find(s => s.id === activeSceneId);
 
   // --- Logic Effects ---
-
   useEffect(() => {
     const checkTime = () => {
       const hour = new Date().getHours();
@@ -94,7 +92,6 @@ export default function ZenFlowRedesignV2() {
   }, [timerState.running, timerState.time]);
 
   // --- Handlers ---
-
   const enterScene = (scene: typeof SCENES_CONFIG[0]) => {
     if (activeSceneId !== scene.id) {
       setActiveSceneId(scene.id);
@@ -148,33 +145,30 @@ export default function ZenFlowRedesignV2() {
   const handleToggleLang = () => setLang(l => l === 'en' ? 'cn' : l === 'cn' ? 'jp' : 'en');
   const handleToggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
-   // 👇 新增：专门用于处理手机端的手势解锁音频
   const handleKnobInteraction = (id: string) => {
       const el = ambientRefs.current[id];
       if (el) {
-             // 核心修复：如果还没加载，强制先加载
-             if (el.readyState === 0) {
-               el.load();
-             }
-             // 尝试播放（解除手机自动播放限制）
-             if (el.paused) {
-               el.play().catch(e => console.log("Mobile autoplay handler:", e));
-             }
+             if (el.readyState === 0) el.load();
+             if (el.paused) el.play().catch(e => console.log("Mobile autoplay handler:", e));
       }
   };
-  // --- Render ---
 
+  // --- Render ---
   return (
     <div className={`relative h-[100dvh] w-full overflow-hidden font-sans select-none transition-colors duration-500 overscroll-none
-      ${theme === 'dark' ? 'text-gray-100 bg-[#050505]' : 'text-slate-800 bg-[#f4f6f8]'}`}>
+      ${theme === 'dark' ? 'text-gray-100 bg-black' : 'text-slate-800 bg-slate-50'}`}>
 
       <NoiseOverlay />
 
-      <AuroraMesh
-              activeSceneId={activeSceneId}
-              theme={theme}
-              viewMode={viewMode}
-            />
+      {/*
+         🚀 全局流体背景
+         置于最底层 (z-0)，根据 viewMode 自动切换颜色和速度
+      */}
+      <HyperFluidMesh
+         activeSceneId={activeSceneId}
+         theme={theme}
+         viewMode={viewMode}
+      />
 
       {/* Audio Elements */}
       <audio ref={audioRef} src={currentStreamUrl} onPlaying={() => setIsLoadingStream(false)} onWaiting={() => setIsLoadingStream(true)} />
@@ -197,71 +191,80 @@ export default function ZenFlowRedesignV2() {
         onToggleTheme={handleToggleTheme}
       />
 
-      {/* --- VIEW: HOME --- */}
-       <main className={`absolute inset-0 z-10 w-full h-full pt-24 px-6 pb-6 transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] overflow-y-auto
-               ${viewMode === 'home' ? 'translate-x-0 opacity-100' : '-translate-x-[20%] opacity-0 pointer-events-none'}`}>
+      {/* --- VIEW: HOME (z-10) --- */}
+      <main className={`absolute inset-0 z-10 w-full h-full pt-24 px-6 pb-6 transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] overflow-y-auto
+         ${viewMode === 'home' ? 'translate-x-0 opacity-100' : '-translate-x-[20%] opacity-0 pointer-events-none'}`}>
 
-              <div className="max-w-4xl mx-auto">
-                {/* 标题区域 */}
-                <div className="mb-8 md:mb-12 animate-fade-in-up">
-                  {/* 给标题加一点混合模式，让背景色透出一点点 */}
-                  <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-2 mix-blend-overlay opacity-90">{getGreeting()}.</h1>
-                  <p className="opacity-50 text-sm md:text-base font-medium">{t.tagline}</p>
-                </div>
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8 md:mb-12 animate-fade-in-up">
+            {/* 混合模式文字，让背景流体从文字中透出来 */}
+            <h1 className={`text-4xl md:text-5xl font-bold tracking-tight mb-2 opacity-90
+               ${theme === 'dark' ? 'mix-blend-overlay text-white' : 'mix-blend-multiply text-slate-900'}`}>
+               {getGreeting()}.
+            </h1>
+            <p className="opacity-50 text-sm md:text-base font-medium">{t.tagline}</p>
+          </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[160px] md:auto-rows-[180px] pb-24">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[160px] md:auto-rows-[180px] pb-24">
 
-                  {/*
-                     💎 卡片样式升级：
-                     为了配合流体背景，我们将卡片的背景设为半透明 (backdrop-blur)。
-                     这样背景的流体会在卡片后面模糊地流动，非常高级。
-                  */}
-                  <button onClick={() => enterScene(SCENES_CONFIG[0])}
-                    className={`md:col-span-2 row-span-2 rounded-[2rem] p-8 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.01] active:scale-[0.99] relative overflow-hidden group backdrop-blur-xl
-                      ${theme === 'dark'
-                         ? 'bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20' // Dark模式：极淡的白
-                         : 'bg-white/40 border border-white/60 hover:bg-white/60' // Light模式：半透明磨砂
-                      }`}>
+            {/* Featured Scene (First One) */}
+            <button onClick={() => enterScene(SCENES_CONFIG[0])}
+              className={`md:col-span-2 row-span-2 rounded-[2rem] p-8 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.01] active:scale-[0.99] relative overflow-hidden group
+                ${theme === 'dark'
+                   ? 'bg-white/5 border border-white/10 backdrop-blur-xl hover:bg-white/10' // Dark Glass
+                   : 'bg-white/40 border border-white/40 backdrop-blur-xl hover:bg-white/50 shadow-sm' // Light Glass
+                }`}>
 
-                     {/* 这里的 gradient 可以保留，作为叠加层 */}
-                     <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-40 transition-opacity duration-700 ${SCENES_CONFIG[0].gradient}`} />
+               {/* 这里的渐变保留，作为叠加层增加丰富度 */}
+               <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-30 transition-opacity duration-700 ${SCENES_CONFIG[0].gradient}`} />
 
-                     <div className="relative z-10">
-                       <div className="inline-flex p-3 rounded-xl bg-white/20 backdrop-blur-md mb-4 text-white shadow-sm">
-                          <Zap size={24} />
-                       </div>
-                       <h2 className="text-3xl font-bold">{t.scenes.focus.title}</h2>
-                       <p className="opacity-60 mt-2 max-w-xs">{t.scenes.focus.desc}</p>
-                     </div>
-                     {/* ... Play Now button ... */}
-                  </button>
+               <div className="relative z-10">
+                 <div className={`inline-flex p-3 rounded-xl mb-4 shadow-sm backdrop-blur-md
+                    ${theme === 'dark' ? 'bg-white/10 text-purple-300' : 'bg-white/60 text-purple-600'}`}>
+                    <Zap size={24} />
+                 </div>
+                 <h2 className="text-3xl font-bold">{t.scenes.focus.title}</h2>
+                 <p className="opacity-60 mt-2 max-w-xs">{t.scenes.focus.desc}</p>
+               </div>
 
-                  {/* 其他小卡片同理，增加 backdrop-blur */}
-                  {SCENES_CONFIG.slice(1).map((scene, i) => (
-                    <button key={scene.id} onClick={() => enterScene(scene)}
-                      className={`rounded-[2rem] p-6 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group backdrop-blur-lg
-                        ${theme === 'dark'
-                           ? 'bg-white/5 border border-white/10 hover:bg-white/10'
-                           : 'bg-white/40 border border-white/60 hover:bg-white/60'}
-                        ${i === 1 ? 'md:row-span-2' : ''}
-                      `}>
-                       <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-30 transition-opacity duration-500 ${scene.gradient}`} />
-                       <div className="relative z-10 flex justify-between items-start">
-                          <div className={`p-2 rounded-lg bg-white/20 backdrop-blur-md text-white`}>{scene.icon}</div>
-                       </div>
-                       <div className="relative z-10">
-                         <h3 className="text-lg font-bold leading-tight">{t.scenes[scene.id as keyof typeof t.scenes].title}</h3>
-                       </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </main>
+               <div className="relative z-10 flex items-center gap-2 opacity-50 text-xs font-bold tracking-widest uppercase group-hover:opacity-100 transition-opacity">
+                  <Play size={12} fill="currentColor" /> Play Now
+               </div>
+            </button>
 
-      {/* --- VIEW: PLAYER --- */}
+            {/* Other Scenes */}
+            {SCENES_CONFIG.slice(1).map((scene, i) => (
+              <button key={scene.id} onClick={() => enterScene(scene)}
+                className={`rounded-[2rem] p-6 flex flex-col justify-between text-left transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group
+                  ${theme === 'dark'
+                     ? 'bg-white/5 border border-white/10 backdrop-blur-lg hover:bg-white/10'
+                     : 'bg-white/40 border border-white/40 backdrop-blur-lg hover:bg-white/50 shadow-sm'}
+                  ${i === 1 ? 'md:row-span-2' : ''}
+                `}>
+
+                 <div className={`absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-20 transition-opacity duration-500 ${scene.gradient}`} />
+
+                 <div className="relative z-10 flex justify-between items-start">
+                    <div className={`p-2 rounded-lg backdrop-blur-md
+                       ${theme === 'dark' ? 'bg-white/10' : 'bg-white/60'} ${scene.color}`}>
+                       {scene.icon}
+                    </div>
+                 </div>
+                 <div className="relative z-10">
+                   <h3 className="text-lg font-bold leading-tight">{t.scenes[scene.id as keyof typeof t.scenes].title}</h3>
+                   <p className="text-[10px] uppercase font-bold tracking-wider opacity-40 mt-1">{t.scenes[scene.id as keyof typeof t.scenes].subtitle}</p>
+                 </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </main>
+
+      {/* --- VIEW: PLAYER (z-20) --- */}
       <main className={`fixed inset-0 z-20 w-full overflow-y-auto overflow-x-hidden transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]
          ${viewMode === 'player' ? 'translate-x-0 opacity-100' : 'translate-x-[20%] opacity-0 pointer-events-none'}`}>
 
+        {/* 注意：移除了 AuroraMesh，背景完全由底层的 HyperFluidMesh 接管 */}
 
         <div className="flex flex-col min-h-[100dvh] w-full relative">
 
@@ -276,7 +279,7 @@ export default function ZenFlowRedesignV2() {
               </div>
             </div>
 
-            {/* Center Play Button Area */}
+            {/* Center Play Button */}
             <div className="flex-1 flex flex-col items-center justify-center relative min-h-[300px] z-30 py-8">
                <div className="relative w-64 h-64 md:w-96 md:h-96 flex items-center justify-center">
                   <div className="flex items-center gap-4 relative z-20">
@@ -304,7 +307,7 @@ export default function ZenFlowRedesignV2() {
             {/* Bottom Command Deck */}
             <div className="w-full px-6 pb-24 md:pb-12 flex-shrink-0 relative z-30">
               <div className={`max-w-md mx-auto rounded-[2.5rem] overflow-hidden backdrop-blur-3xl border shadow-2xl transition-all duration-500
-                 ${theme === 'dark' ? 'bg-[#121212]/60 border-white/10 shadow-black/50' : 'bg-white/50 border-white/40 shadow-xl'}`}>
+                 ${theme === 'dark' ? 'bg-[#121212]/60 border-white/10 shadow-black/50' : 'bg-white/60 border-white/40 shadow-xl'}`}>
 
                  {/* Tab Switcher */}
                  <div className="flex p-2 gap-2">
