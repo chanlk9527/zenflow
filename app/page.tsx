@@ -170,7 +170,7 @@ export default function ZenFlowRedesignV2() {
 
       <NoiseOverlay />
 
-      <AuroraBackground
+      <AuroraMesh
               activeSceneId={activeSceneId}
               theme={theme}
               viewMode={viewMode}
