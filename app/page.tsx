@@ -164,7 +164,7 @@ export default function ZenFlowRedesignV2() {
             ref={(el) => { ambientRefs.current[s.id] = el; }}
             src={s.url}
             loop
-            preload="auto"
+            preload="metadata"
             crossOrigin="anonymous"
         />
       ))}
