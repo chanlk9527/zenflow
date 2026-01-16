@@ -171,7 +171,7 @@ export default function ZenFlowRedesignV2() {
       <NoiseOverlay />
 
       <AuroraBackground
-               activeSceneId={activeSceneId}
+               activeScene={activeSceneId}
                theme={theme}
                viewMode={viewMode}
             />
