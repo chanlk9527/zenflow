@@ -10,6 +10,7 @@ import { TRANSLATIONS, SCENES_CONFIG, AMBIENT_SOUNDS } from "@/data/constants";
 import NoiseOverlay from "@/components/visuals/NoiseOverlay";
 import AuroraBackground from "@/components/visuals/AuroraBackground";
 import AppleStyleMesh from "@/components/visuals/AppleStyleMesh";
+import AuroraMesh from "@/components/visuals/AuroraMesh";
 import SoundKnob from "@/components/tools/SoundKnob";
 import TimerDisplay from "@/components/tools/TimerDisplay";
 import Header from "@/components/layout/Header";
@@ -248,7 +249,7 @@ export default function ZenFlowRedesignV2() {
       <main className={`fixed inset-0 z-20 w-full overflow-y-auto overflow-x-hidden transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]
          ${viewMode === 'player' ? 'translate-x-0 opacity-100' : 'translate-x-[20%] opacity-0 pointer-events-none'}`}>
 
-        <AppleStyleMesh isPlaying={isMainPlaying} activeSceneId={activeSceneId} theme={theme} />
+        <AuroraMesh isPlaying={isMainPlaying} activeSceneId={activeSceneId} theme={theme} />
 
         <div className="flex flex-col min-h-[100dvh] w-full relative">
 
