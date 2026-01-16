@@ -14,6 +14,25 @@ pnpm dev
 bun dev
 ```
 
+src/
+├── types/
+│   └── index.ts               // 所有类型定义
+├── data/
+│   └── constants.ts           // 翻译、场景配置、音频数据
+├── components/
+│   ├── visuals/               // 视觉背景组件
+│   │   ├── NoiseOverlay.tsx
+│   │   ├── AuroraBackground.tsx
+│   │   └── AppleStyleMesh.tsx
+│   ├── tools/                 // 功能组件 (计时器、旋钮)
+│   │   ├── SoundKnob.tsx
+│   │   └── TimerDisplay.tsx
+│   └── layout/                // 布局组件
+│       └── Header.tsx
+└── app/
+└── page.tsx               // 主入口 (逻辑聚合)
+
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
