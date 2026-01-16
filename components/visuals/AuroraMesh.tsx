@@ -13,109 +13,121 @@ const AuroraMesh = memo(({ isPlaying, activeSceneId, theme }: Props) => {
     : ELEVATED_PALETTES.focus;
 
   return (
-    <div className={`fixed inset-0 z-0 overflow-hidden pointer-events-none select-none transition-colors duration-1000
-      ${theme === 'dark' ? 'bg-[#050505]' : 'bg-[#ffffff]'}`}>
+    <div className={`fixed inset-0 z-0 overflow-hidden pointer-events-none select-none transition-colors duration-700
+      ${theme === 'dark' ? 'bg-black' : 'bg-white'}`}>
 
       <style>{`
         /*
-           核心魔法：Border-radius 变形动画
-           这是让圆球看起来像"液体"的关键。
-           我们在旋转的同时，改变四个角的半径，让它看起来在不断蠕动。
+           1. 激进的流动动画 (Aggressive Flow)
+           大幅度的 translate (40%-50%) 让色块在屏幕上疯狂穿梭。
+           配合 scale 的变化，模拟液体涌动的压强感。
         */
-        @keyframes morph-flow {
-          0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: translate(0, 0) rotate(0deg); }
-          25% { border-radius: 45% 55% 50% 50% / 55% 45% 40% 60%; }
-          50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; transform: translate(10%, 5%) rotate(120deg); }
-          75% { border-radius: 45% 55% 40% 60% / 55% 45% 50% 50%; }
-          100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: translate(0, 0) rotate(360deg); }
+        @keyframes flow-one {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30vw, -40vh) scale(1.5); }
+          66% { transform: translate(-20vw, 20vh) scale(0.8); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+
+        @keyframes flow-two {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(-30vw, -20vh) scale(1.3); }
+          66% { transform: translate(25vw, 25vh) scale(0.6); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+
+        @keyframes flow-three {
+          0% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
+          50% { transform: translate(0vw, 30vh) scale(1.6) rotate(180deg); }
+          100% { transform: translate(0px, 0px) scale(1) rotate(360deg); }
         }
 
         /*
-           呼吸效果：让颜色忽深忽浅
+           2. 快速形变 (Quick Morph)
+           加快了 border-radius 的变化速度，让球体看起来很不稳定。
         */
-        @keyframes deep-breathe {
-          0%, 100% { opacity: 0.7; transform: scale(1); }
-          50% { opacity: 0.9; transform: scale(1.15); }
+        @keyframes liquid-morph {
+            0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+            50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+            100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
         }
 
-        .animate-morph-slow { animation: morph-flow 25s infinite linear; }
-        .animate-morph-mid { animation: morph-flow 20s infinite linear reverse; }
-        .animate-morph-fast { animation: morph-flow 18s infinite linear; }
-        .animate-breathe { animation: deep-breathe 10s infinite ease-in-out; }
+        /*
+           动画速度显著提升：12s / 15s / 10s
+           之前的版本通常是 25s+
+        */
+        .animate-flow-1 { animation: flow-one 12s infinite ease-in-out, liquid-morph 8s infinite ease-in-out; }
+        .animate-flow-2 { animation: flow-two 15s infinite ease-in-out, liquid-morph 10s infinite ease-in-out reverse; }
+        .animate-flow-3 { animation: flow-three 10s infinite ease-in-out, liquid-morph 12s infinite ease-in-out; }
+
+        .gpu-layer {
+            will-change: transform, border-radius;
+            transform-style: preserve-3d;
+        }
 
         .paused-anim * { animation-play-state: paused !important; }
-
-        /*
-           手机端专属优化：开启 GPU 加速，防止发热卡顿
-        */
-        .gpu-accelerated {
-            transform: translate3d(0,0,0);
-            will-change: transform, border-radius;
-        }
       `}</style>
 
       {/*
-         第一层：SVG 噪点 (增强高级感)
-         在手机的高 PPI 屏幕上，这能有效防止渐变出现波纹(Banding)。
+         噪点层：保持质感，mix-blend-overlay
       */}
       <div
-        className="absolute inset-0 opacity-[0.06] z-20 pointer-events-none mix-blend-overlay"
-        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+        className="absolute inset-0 opacity-[0.08] z-30 pointer-events-none mix-blend-overlay"
+        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
       />
 
-      {/*
-         容器：在手机上，我们需要让容器比屏幕大很多 (150%)，
-         这样用户看到的只是局部，不会看到球体的边缘。
-      */}
-      <div className={`relative w-full h-full flex items-center justify-center scale-150 md:scale-125 transition-opacity duration-[2000ms]
-         ${isPlaying ? 'opacity-100' : 'opacity-40'}
-         ${isPlaying ? '' : 'paused-anim'}`}>
+      <div className={`relative w-full h-full transition-opacity duration-1000
+        ${isPlaying ? 'opacity-100' : 'opacity-50'}
+        ${isPlaying ? '' : 'paused-anim'}`}>
 
-         {/*
-            第二层：高斯模糊混合层
-            theme === 'dark' ? plus-lighter (霓虹感) : multiply (水彩感)
-         */}
-         <div className={`relative w-full h-full filter blur-[60px] md:blur-[100px]
-            ${theme === 'dark' ? 'saturate-[2] mix-blend-hard-light' : 'saturate-[1.8] mix-blend-multiply'}`}>
+        {/*
+           核心混合层
+           blur-3xl -> 极度模糊
+           saturate-200 -> 极高饱和度 (颜色混合后会变灰，所以要先加饱和)
+           contrast-125 -> 增加对比度，让模糊边缘变得稍微"硬"一点，产生油画感
+        */}
+        <div className={`absolute inset-0 filter blur-[80px] saturate-200 contrast-125
+            ${theme === 'dark' ? 'mix-blend-hard-light' : 'mix-blend-multiply'}`}>
 
-            {/*
-               流体 1：主色
-               位置：左上 -> 往右下流动
-            */}
-            <div className={`gpu-accelerated absolute top-[-10%] left-[-20%] w-[80vw] h-[80vw] rounded-full mix-blend-multiply opacity-80 animate-morph-slow transition-colors duration-[3000ms]
-               ${palette.orbs[0]}
-               ${theme === 'dark' ? 'mix-blend-screen' : 'mix-blend-multiply'}`}
-            />
+          {/*
+             Blob 1: 主色
+             w-[120vw] -> 尺寸巨大，为了保证移动时不会露出空白背景
+          */}
+          <div className={`gpu-layer absolute top-0 left-[-20%] w-[120vw] h-[100vw] opacity-80 animate-flow-1
+             ${palette.orbs[0]}
+             ${theme === 'dark' ? 'mix-blend-screen' : 'mix-blend-multiply'}`}
+          />
 
-            {/*
-               流体 2：对比色
-               位置：右下 -> 往左上流动
-            */}
-            <div className={`gpu-accelerated absolute bottom-[-10%] right-[-20%] w-[85vw] h-[90vw] rounded-full mix-blend-multiply opacity-80 animate-morph-mid transition-colors duration-[3000ms]
-               ${palette.orbs[1]}
-               ${theme === 'dark' ? 'mix-blend-screen' : 'mix-blend-multiply'}`}
-            />
+          {/*
+             Blob 2: 对比色
+             反向运动
+          */}
+          <div className={`gpu-layer absolute bottom-0 right-[-20%] w-[120vw] h-[100vw] opacity-80 animate-flow-2
+             ${palette.orbs[1]}
+             ${theme === 'dark' ? 'mix-blend-screen' : 'mix-blend-lighten'}`}
+          />
 
-            {/*
-               流体 3：高光色
-               位置：中心 -> 呼吸并变形
-               这个层在 Dark 模式下非常重要，提供那种"发光"的感觉
-            */}
-            <div className={`gpu-accelerated absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70vw] h-[70vw] rounded-full opacity-60 animate-morph-fast transition-colors duration-[3000ms]
-               ${palette.orbs[2]}
-               ${theme === 'dark' ? 'mix-blend-plus-lighter' : 'mix-blend-overlay'}`}
-            />
-         </div>
+          {/*
+             Blob 3: 搅拌色
+             在中间剧烈旋转和缩放，负责把另外两个颜色"搅浑"
+          */}
+          <div className={`gpu-layer absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[100vw] opacity-70 animate-flow-3
+             ${palette.orbs[2]}
+             ${theme === 'dark' ? 'mix-blend-plus-lighter' : 'mix-blend-overlay'}`}
+          />
+
+        </div>
       </div>
 
       {/*
-         第三层：氛围晕影 (Vignette)
-         给屏幕四周加一点点暗角，让视线集中在中心，这能显著提升画面的"电影感"。
+        高光玻璃层 (Glass Glare)
+        在最上面加一层非常淡的径向渐变，模拟光照在玻璃上的反射，
+        这能增加画面的通透感，不让颜色看起来太"死"。
       */}
-      <div className={`absolute inset-0 z-10 pointer-events-none
+      <div className={`absolute inset-0 z-20 pointer-events-none
          ${theme === 'dark'
-            ? 'bg-[radial-gradient(circle_at_center,transparent_40%,rgba(0,0,0,0.6)_100%)]'
-            : 'bg-[radial-gradient(circle_at_center,transparent_50%,rgba(255,255,255,0.6)_100%)]'}`}
+            ? 'bg-gradient-to-tr from-black/20 via-transparent to-white/5'
+            : 'bg-gradient-to-tr from-transparent via-white/20 to-white/40'}`}
       />
 
     </div>
