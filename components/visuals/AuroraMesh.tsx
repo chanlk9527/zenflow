@@ -7,114 +7,117 @@ interface Props {
   theme: 'light' | 'dark';
 }
 
-const AuroraMesh = memo(({ isPlaying, activeSceneId, theme }: Props) => {
+const FluidAuroraMesh = memo(({ isPlaying, activeSceneId, theme }: Props) => {
   const palette = activeSceneId && ELEVATED_PALETTES[activeSceneId]
     ? ELEVATED_PALETTES[activeSceneId]
     : ELEVATED_PALETTES.focus;
 
   return (
-    <div className={`fixed inset-0 z-0 overflow-hidden pointer-events-none select-none bg-neutral-50 dark:bg-black transition-colors duration-1000`}>
+    <div className={`fixed inset-0 z-0 overflow-hidden pointer-events-none select-none transition-colors duration-1000
+      ${theme === 'dark' ? 'bg-[#050505]' : 'bg-[#ffffff]'}`}>
+
       <style>{`
         /*
-           核心技巧：Stripe 风格的关键在于“巨大的旋转”，而不是简单的弹跳。
-           这会让颜色看起来像是在慢慢“流过”屏幕。
+           核心魔法：Border-radius 变形动画
+           这是让圆球看起来像"液体"的关键。
+           我们在旋转的同时，改变四个角的半径，让它看起来在不断蠕动。
         */
-        @keyframes gradient-rotate {
-            0% { transform: rotate(0deg) scale(1.5) translate(0, 0); }
-            50% { transform: rotate(180deg) scale(1.6) translate(-5%, -5%); }
-            100% { transform: rotate(360deg) scale(1.5) translate(0, 0); }
-        }
-
-        @keyframes gradient-pulse {
-            0%, 100% { opacity: 0.8; transform: scale(1); }
-            50% { opacity: 0.6; transform: scale(1.1); }
+        @keyframes morph-flow {
+          0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: translate(0, 0) rotate(0deg); }
+          25% { border-radius: 45% 55% 50% 50% / 55% 45% 40% 60%; }
+          50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; transform: translate(10%, 5%) rotate(120deg); }
+          75% { border-radius: 45% 55% 40% 60% / 55% 45% 50% 50%; }
+          100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: translate(0, 0) rotate(360deg); }
         }
 
         /*
-           SVG 噪点：这是让渐变看起来“高级”的秘密武器。
-           它打破了数字渐变的平滑感，增加了纸张/磨砂质感。
+           呼吸效果：让颜色忽深忽浅
         */
-        .noise-texture {
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.4'/%3E%3C/svg%3E");
+        @keyframes deep-breathe {
+          0%, 100% { opacity: 0.7; transform: scale(1); }
+          50% { opacity: 0.9; transform: scale(1.15); }
         }
 
-        .animate-spin-slow {
-            animation: gradient-rotate 40s infinite linear;
-        }
+        .animate-morph-slow { animation: morph-flow 25s infinite linear; }
+        .animate-morph-mid { animation: morph-flow 20s infinite linear reverse; }
+        .animate-morph-fast { animation: morph-flow 18s infinite linear; }
+        .animate-breathe { animation: deep-breathe 10s infinite ease-in-out; }
 
-        .animate-pulse-slow {
-            animation: gradient-pulse 15s infinite ease-in-out;
-        }
+        .paused-anim * { animation-play-state: paused !important; }
 
-        .paused-anim * {
-            animation-play-state: paused !important;
+        /*
+           手机端专属优化：开启 GPU 加速，防止发热卡顿
+        */
+        .gpu-accelerated {
+            transform: translate3d(0,0,0);
+            will-change: transform, border-radius;
         }
       `}</style>
 
       {/*
-         容器：使用 opacity 控制播放/暂停时的淡入淡出，
-         而不是硬切，保持高级感。
+         第一层：SVG 噪点 (增强高级感)
+         在手机的高 PPI 屏幕上，这能有效防止渐变出现波纹(Banding)。
       */}
-      <div className={`relative w-full h-full transition-opacity duration-[1500ms]
-          ${isPlaying ? 'opacity-100' : 'opacity-20'}
-          ${isPlaying ? '' : 'paused-anim'}`}
-      >
+      <div
+        className="absolute inset-0 opacity-[0.06] z-20 pointer-events-none mix-blend-overlay"
+        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+      />
 
-        {/*
-           混合容器：
-           theme === 'dark' ? 'saturate-[1.8]' : 'saturate-[2.5]'
-           Stripe 的颜色通常饱和度很高，然后通过 blur 晕开。
-        */}
-        <div className={`absolute inset-0 w-full h-full filter blur-[80px] md:blur-[120px]
-            ${theme === 'dark' ? 'saturate-[1.6] contrast-[1.1]' : 'saturate-[2] opacity-80'}`}>
+      {/*
+         容器：在手机上，我们需要让容器比屏幕大很多 (150%)，
+         这样用户看到的只是局部，不会看到球体的边缘。
+      */}
+      <div className={`relative w-full h-full flex items-center justify-center scale-150 md:scale-125 transition-opacity duration-[2000ms]
+         ${isPlaying ? 'opacity-100' : 'opacity-40'}
+         ${isPlaying ? '' : 'paused-anim'}`}>
 
-          {/*
-             Blob 1: 主色调 (巨大，作为背景基调)
-             不再是圆，而是巨大的椭圆，铺满屏幕的一半。
-          */}
-          <div className={`absolute top-[-20%] left-[-10%] w-[90vw] h-[90vw] rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-spin-slow
-             ${palette.orbs[0]}
-             ${theme === 'dark' ? 'mix-blend-screen opacity-40' : 'mix-blend-multiply opacity-60'}`}
-          />
+         {/*
+            第二层：高斯模糊混合层
+            theme === 'dark' ? plus-lighter (霓虹感) : multiply (水彩感)
+         */}
+         <div className={`relative w-full h-full filter blur-[60px] md:blur-[100px]
+            ${theme === 'dark' ? 'saturate-[2] mix-blend-hard-light' : 'saturate-[1.8] mix-blend-multiply'}`}>
 
-          {/*
-             Blob 2: 辅助色 (作为对比)
-             放在对角线位置，产生颜色碰撞。
-          */}
-          <div className={`absolute bottom-[-20%] right-[-10%] w-[90vw] h-[90vw] rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-spin-slow transition-colors duration-[3000ms]
-             ${palette.orbs[1]}
-             ${theme === 'dark' ? 'mix-blend-screen opacity-40' : 'mix-blend-multiply opacity-60'}`}
-             style={{ animationDirection: 'reverse', animationDuration: '50s' }}
-          />
+            {/*
+               流体 1：主色
+               位置：左上 -> 往右下流动
+            */}
+            <div className={`gpu-accelerated absolute top-[-10%] left-[-20%] w-[80vw] h-[80vw] rounded-full mix-blend-multiply opacity-80 animate-morph-slow transition-colors duration-[3000ms]
+               ${palette.orbs[0]}
+               ${theme === 'dark' ? 'mix-blend-screen' : 'mix-blend-multiply'}`}
+            />
 
-          {/*
-             Blob 3: 强调色 (游走的“高光”)
-             这个小一点，用来在中间穿插，制造层次感。
-          */}
-          <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-pulse-slow transition-colors duration-[3000ms]
-             ${palette.orbs[2]}
-             ${theme === 'dark' ? 'mix-blend-plus-lighter opacity-60' : 'mix-blend-hard-light opacity-50'}`}
-          />
+            {/*
+               流体 2：对比色
+               位置：右下 -> 往左上流动
+            */}
+            <div className={`gpu-accelerated absolute bottom-[-10%] right-[-20%] w-[85vw] h-[90vw] rounded-full mix-blend-multiply opacity-80 animate-morph-mid transition-colors duration-[3000ms]
+               ${palette.orbs[1]}
+               ${theme === 'dark' ? 'mix-blend-screen' : 'mix-blend-multiply'}`}
+            />
 
-        </div>
-
-        {/*
-           这一层至关重要：白色/黑色的蒙版。
-           Stripe 的设计通常不是全屏满色，而是颜色在白底上透出来的感觉。
-           我们在上面盖一层半透明的白色/黑色，让颜色变得“含蓄”。
-        */}
-        <div className={`absolute inset-0 w-full h-full
-            ${theme === 'dark' ? 'bg-black/30' : 'bg-white/40'}`}
-        />
-
-        {/*
-           噪点层：放在最上面
-           mix-blend-overlay 让噪点只影响亮度，不影响颜色。
-           opacity 控制颗粒感的强弱，0.08 是个经验值，既有质感又不脏。
-        */}
-        <div className={`absolute inset-0 w-full h-full noise-texture opacity-[0.08] mix-blend-overlay pointer-events-none`} />
-
+            {/*
+               流体 3：高光色
+               位置：中心 -> 呼吸并变形
+               这个层在 Dark 模式下非常重要，提供那种"发光"的感觉
+            */}
+            <div className={`gpu-accelerated absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70vw] h-[70vw] rounded-full opacity-60 animate-morph-fast transition-colors duration-[3000ms]
+               ${palette.orbs[2]}
+               ${theme === 'dark' ? 'mix-blend-plus-lighter' : 'mix-blend-overlay'}`}
+            />
+         </div>
       </div>
+
+      {/*
+         第三层：氛围晕影 (Vignette)
+         给屏幕四周加一点点暗角，让视线集中在中心，这能显著提升画面的"电影感"。
+      */}
+      <div className={`absolute inset-0 z-10 pointer-events-none
+         ${theme === 'dark'
+            ? 'bg-[radial-gradient(circle_at_center,transparent_40%,rgba(0,0,0,0.6)_100%)]'
+            : 'bg-[radial-gradient(circle_at_center,transparent_50%,rgba(255,255,255,0.6)_100%)]'}`}
+      />
+
     </div>
   );
 });
